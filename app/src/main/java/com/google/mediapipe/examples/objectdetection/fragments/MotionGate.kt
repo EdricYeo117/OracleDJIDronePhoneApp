@@ -1,7 +1,6 @@
 import androidx.camera.core.ImageProxy
 import kotlin.math.abs
 import kotlin.math.max
-import kotlin.system.measureTimeMillis
 
 data class MotionDecision(
     val motionFrame: Boolean,

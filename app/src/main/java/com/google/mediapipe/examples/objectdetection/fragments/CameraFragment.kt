@@ -15,6 +15,7 @@
  */
 package com.google.mediapipe.examples.objectdetection.fragments
 
+import MotionGate
 import android.annotation.SuppressLint
 import android.content.res.Configuration
 import android.os.Bundle
@@ -47,6 +48,7 @@ import java.util.concurrent.TimeUnit
 class CameraFragment : Fragment(), ObjectDetectorHelper.DetectorListener {
 
     private val TAG = "ObjectDetection"
+    private val motionGate = MotionGate()
 
     private var _fragmentCameraBinding: FragmentCameraBinding? = null
 
@@ -307,10 +309,19 @@ class CameraFragment : Fragment(), ObjectDetectorHelper.DetectorListener {
                 .build()
                 // The analyzer can then be assigned to the instance
                 .also {
-                    it.setAnalyzer(
-                        backgroundExecutor,
-                        objectDetectorHelper::detectLivestreamFrame
-                    )
+                    it.setAnalyzer(backgroundExecutor) { imageProxy ->
+                        val decision = motionGate.update(imageProxy)
+
+                        if (!decision.motionFrame) {
+                            imageProxy.close()
+                            return@setAnalyzer
+                        }
+
+                        // CRITICAL: MotionGate advanced the buffer position. Reset it for detector.
+                        imageProxy.planes[0].buffer.rewind()
+
+                        objectDetectorHelper.detectLivestreamFrame(imageProxy)
+                    }
                 }
 
         // Must unbind the use-cases before rebinding them
