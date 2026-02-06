@@ -304,26 +304,26 @@ class CameraFragment : Fragment(), ObjectDetectorHelper.DetectorListener {
                 .setTargetAspectRatio(AspectRatio.RATIO_4_3)
                 .setTargetRotation(fragmentCameraBinding.viewFinder.display.rotation)
                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                .setOutputImageFormat(OUTPUT_IMAGE_FORMAT_RGBA_8888)
+//                .setOutputImageFormat(OUTPUT_IMAGE_FORMAT_RGBA_8888)
                 .build()
                 // The analyzer can then be assigned to the instance
                 .also {
                     it.setAnalyzer(backgroundExecutor) { imageProxy ->
                         val decision = motionGate.update(imageProxy)
 
-// show mask every frame (even if no motion), but you can also choose to show only when motionFrame==true
+                        // Update UI mask (optional)
                         activity?.runOnUiThread {
                             fragmentCameraBinding.overlay.setMotionMask(decision.maskBitmap, decision.motionFrame)
                         }
 
                         if (!decision.motionFrame) {
+                            // We are NOT sending this frame to object detector, so we must close it here.
                             imageProxy.close()
                             return@setAnalyzer
                         }
 
-// IMPORTANT: if you're using RGBA output, keep this:
-                        imageProxy.planes[0].buffer.rewind()
-
+                        // IMPORTANT: do NOT close imageProxy here.
+                        // Pass ownership to ObjectDetectorHelper, which will close it.
                         objectDetectorHelper.detectLivestreamFrame(imageProxy)
                     }
                 }
@@ -372,7 +372,8 @@ class CameraFragment : Fragment(), ObjectDetectorHelper.DetectorListener {
                 }
 
                 fragmentCameraBinding.overlay.setPersonActive(personDetected)
-                if (personDetected && isAdded) {
+
+                if (personDetected) {
                     fragmentCameraBinding.overlay.setResults(
                         detectionResult,
                         resultBundle.inputImageHeight,
@@ -380,7 +381,7 @@ class CameraFragment : Fragment(), ObjectDetectorHelper.DetectorListener {
                         resultBundle.inputImageRotation
                     )
                 } else {
-                    fragmentCameraBinding.overlay.clear() // clears boxes (mask will still draw)
+                    fragmentCameraBinding.overlay.clear()   // clears boxes but mask remains
                 }
                 fragmentCameraBinding.overlay.invalidate()
             }

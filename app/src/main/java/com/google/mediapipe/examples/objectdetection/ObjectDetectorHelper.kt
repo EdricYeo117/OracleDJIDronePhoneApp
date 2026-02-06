@@ -15,6 +15,7 @@
  */
 package com.google.mediapipe.examples.objectdetection
 
+import com.google.mediapipe.examples.objectdetection.YuvToRgbConverter
 import android.content.Context
 import android.graphics.Bitmap
 import android.media.MediaMetadataRetriever
@@ -47,6 +48,7 @@ class ObjectDetectorHelper(
     // will not change, a lazy val would be preferable.
     private var objectDetector: ObjectDetector? = null
     private var imageRotation = 0
+    private val yuvToRgbConverter = YuvToRgbConverter(context)
     private lateinit var imageProcessingOptions: ImageProcessingOptions
 
     init {
@@ -235,33 +237,37 @@ class ObjectDetectorHelper(
     // Runs object detection on live streaming cameras frame-by-frame and returns the results
     // asynchronously to the caller.
     fun detectLivestreamFrame(imageProxy: ImageProxy) {
-
         if (runningMode != RunningMode.LIVE_STREAM) {
             throw IllegalArgumentException(
-                "Attempting to call detectLivestreamFrame" + " while not using RunningMode.LIVE_STREAM"
+                "Attempting to call detectLivestreamFrame while not LIVE_STREAM"
             )
         }
 
         val frameTime = SystemClock.uptimeMillis()
+        val rotationDegrees = imageProxy.imageInfo.rotationDegrees
 
-        // Copy out RGB bits from the frame to a bitmap buffer
         val bitmapBuffer = Bitmap.createBitmap(
-            imageProxy.width, imageProxy.height, Bitmap.Config.ARGB_8888
+            imageProxy.width,
+            imageProxy.height,
+            Bitmap.Config.ARGB_8888
         )
-        imageProxy.use { bitmapBuffer.copyPixelsFromBuffer(imageProxy.planes[0].buffer) }
+
+        // Convert ONCE (must be before close)
+        yuvToRgbConverter.yuvToRgb(imageProxy, bitmapBuffer)
+
+        // Close ONCE (and never touch imageProxy again)
         imageProxy.close()
 
-        // If the input image rotation is change, stop all detector
-        if (imageProxy.imageInfo.rotationDegrees != imageRotation) {
-            imageRotation = imageProxy.imageInfo.rotationDegrees
-            clearObjectDetector()
-            setupObjectDetector()
-            return
+        // Update rotation + processing options
+        if (rotationDegrees != imageRotation) {
+            imageRotation = rotationDegrees
+            imageProcessingOptions = ImageProcessingOptions.builder()
+                .setRotationDegrees(imageRotation)
+                .build()
+            // No need to recreate detector just for rotation
         }
 
-        // Convert the input Bitmap object to an MPImage object to run inference
         val mpImage = BitmapImageBuilder(bitmapBuffer).build()
-
         detectAsync(mpImage, frameTime)
     }
 

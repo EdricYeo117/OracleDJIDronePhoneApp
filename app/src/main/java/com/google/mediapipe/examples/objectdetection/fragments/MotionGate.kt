@@ -17,10 +17,10 @@ data class MotionDecision(
 )
 
 class MotionGate(
-    private val downsampleStep: Int = 4,        // 2..8 typical
-    private val alpha: Float = 0.05f,           // EMA update rate (0.02..0.10)
-    private val diffThreshold: Int = 18,        // luma diff threshold (10..30)
-    private val ratioThreshold: Float = 0.02f,  // % pixels changed (0.01..0.06)
+    private val downsampleStep: Int = 6,        // 2..8 typical
+    private val alpha: Float = 0.08f,           // EMA update rate (0.02..0.10)
+    private val diffThreshold: Int = 28,        // luma diff threshold (10..30)
+    private val ratioThreshold: Float = 0.03f,  // % pixels changed (0.01..0.06)
     private val minConsecutive: Int = 3,        // motion frames required
     private val cooldownMs: Long = 10_000L,     // min time between triggers
     private val globalChangeIgnoreRatio: Float = 0.60f, // ignore exposure shifts
@@ -44,8 +44,8 @@ class MotionGate(
         val height = image.height
 
         val step = max(1, downsampleStep)
-        val dsW = width / step
-        val dsH = height / step
+        val dsW = (width + step - 1) / step
+        val dsH = (height + step - 1) / step
         val total = dsW * dsH
 
         if (total <= 0) {
@@ -108,9 +108,22 @@ class MotionGate(
 
         val ratio = changed.toFloat() / total.toFloat()
 
-        // Build mask bitmap (downsampled)
+// --- INSERT CLEANUP HERE ---
+        val cleaned = ByteArray(total)
+        for (yy in 1 until dsH - 1) {
+            for (xx in 1 until dsW - 1) {
+                var on = 0
+                for (dy in -1..1) for (dx in -1..1) {
+                    if (mask[(yy + dy) * dsW + (xx + dx)].toInt() != 0) on++
+                }
+                cleaned[yy * dsW + xx] = if (on >= 5) 0xFF.toByte() else 0x00
+            }
+        }
+// --- END CLEANUP ---
+
+// Build mask bitmap (downsampled) from CLEANED mask
         val maskBmp = Bitmap.createBitmap(dsW, dsH, Bitmap.Config.ALPHA_8)
-        maskBmp.copyPixelsFromBuffer(ByteBuffer.wrap(mask))
+        maskBmp.copyPixelsFromBuffer(ByteBuffer.wrap(cleaned))
 
         // Suppress global exposure changes
         if (ratio >= globalChangeIgnoreRatio) {
