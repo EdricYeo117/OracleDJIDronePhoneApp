@@ -1,4 +1,8 @@
+package com.google.mediapipe.examples.objectdetection.fragments
+
+import android.graphics.Bitmap
 import androidx.camera.core.ImageProxy
+import java.nio.ByteBuffer
 import kotlin.math.abs
 import kotlin.math.max
 
@@ -6,16 +10,19 @@ data class MotionDecision(
     val motionFrame: Boolean,
     val triggered: Boolean,
     val changedPixelRatio: Float,
-    val consecutiveMotionFrames: Int
+    val consecutiveMotionFrames: Int,
+    val maskBitmap: Bitmap?,   // downsampled ALPHA_8 mask
+    val maskWidth: Int,
+    val maskHeight: Int
 )
 
 class MotionGate(
-    private val downsampleStep: Int = 4,        // 2..8 typical. 4 is a good start.
+    private val downsampleStep: Int = 4,        // 2..8 typical
     private val alpha: Float = 0.05f,           // EMA update rate (0.02..0.10)
-    private val diffThreshold: Int = 18,        // pixel diff threshold (10..30)
+    private val diffThreshold: Int = 18,        // luma diff threshold (10..30)
     private val ratioThreshold: Float = 0.02f,  // % pixels changed (0.01..0.06)
     private val minConsecutive: Int = 3,        // motion frames required
-    private val cooldownMs: Long = 10_000L,     // minimum time between triggers
+    private val cooldownMs: Long = 10_000L,     // min time between triggers
     private val globalChangeIgnoreRatio: Float = 0.60f, // ignore exposure shifts
     private val warmupFrames: Int = 15          // build background before triggering
 ) {
@@ -31,7 +38,7 @@ class MotionGate(
         val yPlane = image.planes[0]
         val buffer = yPlane.buffer
         val rowStride = yPlane.rowStride
-        val pixelStride = yPlane.pixelStride // usually 1 for Y plane
+        val pixelStride = yPlane.pixelStride // for Y plane usually 1
 
         val width = image.width
         val height = image.height
@@ -43,15 +50,15 @@ class MotionGate(
 
         if (total <= 0) {
             consecutive = 0
-            return MotionDecision(false, false, 0f, consecutive)
+            return MotionDecision(false, false, 0f, consecutive, null, 0, 0)
         }
 
-        // (Re)initialize background if needed
+        // (Re)initialize background model if needed
         if (bg == null || bgW != dsW || bgH != dsH) {
             bgW = dsW
             bgH = dsH
             bg = FloatArray(total)
-            // initialize bg from current frame
+
             var idx = 0
             for (y in 0 until height step step) {
                 val rowBase = y * rowStride
@@ -61,11 +68,15 @@ class MotionGate(
                     bg!![idx++] = yVal.toFloat()
                 }
             }
+
             consecutive = 0
             frameCount = 1
-            return MotionDecision(false, false, 0f, consecutive)
+            // Return an empty mask for the first frame (optional)
+            val emptyMask = Bitmap.createBitmap(dsW, dsH, Bitmap.Config.ALPHA_8)
+            return MotionDecision(false, false, 0f, consecutive, emptyMask, dsW, dsH)
         }
 
+        val mask = ByteArray(total)
         var changed = 0
         var idx = 0
 
@@ -80,7 +91,15 @@ class MotionGate(
                 bg!![idx] = updated
 
                 val d = abs(cur - updated).toInt()
-                if (d >= diffThreshold) changed++
+                val isChanged = d >= diffThreshold
+
+                if (isChanged) {
+                    changed++
+                    mask[idx] = 0xFF.toByte()
+                } else {
+                    mask[idx] = 0x00
+                }
+
                 idx++
             }
         }
@@ -89,15 +108,25 @@ class MotionGate(
 
         val ratio = changed.toFloat() / total.toFloat()
 
-        // Suppress “whole frame changed” (often auto-exposure / lighting shift)
+        // Build mask bitmap (downsampled)
+        val maskBmp = Bitmap.createBitmap(dsW, dsH, Bitmap.Config.ALPHA_8)
+        maskBmp.copyPixelsFromBuffer(ByteBuffer.wrap(mask))
+
+        // Suppress global exposure changes
         if (ratio >= globalChangeIgnoreRatio) {
             consecutive = 0
-            // Optionally: you can re-seed bg faster here if needed.
-            return MotionDecision(motionFrame = false, triggered = false, changedPixelRatio = ratio, consecutiveMotionFrames = consecutive)
+            return MotionDecision(
+                motionFrame = false,
+                triggered = false,
+                changedPixelRatio = ratio,
+                consecutiveMotionFrames = consecutive,
+                maskBitmap = maskBmp,
+                maskWidth = dsW,
+                maskHeight = dsH
+            )
         }
 
         val motionFrame = ratio >= ratioThreshold
-
         consecutive = if (motionFrame) (consecutive + 1) else 0
 
         val warmedUp = frameCount > warmupFrames
@@ -110,7 +139,10 @@ class MotionGate(
             motionFrame = motionFrame,
             triggered = triggered,
             changedPixelRatio = ratio,
-            consecutiveMotionFrames = consecutive
+            consecutiveMotionFrames = consecutive,
+            maskBitmap = maskBmp,
+            maskWidth = dsW,
+            maskHeight = dsH
         )
     }
 }

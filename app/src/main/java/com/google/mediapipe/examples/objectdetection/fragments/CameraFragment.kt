@@ -15,7 +15,6 @@
  */
 package com.google.mediapipe.examples.objectdetection.fragments
 
-import MotionGate
 import android.annotation.SuppressLint
 import android.content.res.Configuration
 import android.os.Bundle
@@ -312,12 +311,17 @@ class CameraFragment : Fragment(), ObjectDetectorHelper.DetectorListener {
                     it.setAnalyzer(backgroundExecutor) { imageProxy ->
                         val decision = motionGate.update(imageProxy)
 
+// show mask every frame (even if no motion), but you can also choose to show only when motionFrame==true
+                        activity?.runOnUiThread {
+                            fragmentCameraBinding.overlay.setMotionMask(decision.maskBitmap, decision.motionFrame)
+                        }
+
                         if (!decision.motionFrame) {
                             imageProxy.close()
                             return@setAnalyzer
                         }
 
-                        // CRITICAL: MotionGate advanced the buffer position. Reset it for detector.
+// IMPORTANT: if you're using RGBA output, keep this:
                         imageProxy.planes[0].buffer.rewind()
 
                         objectDetectorHelper.detectLivestreamFrame(imageProxy)
@@ -360,16 +364,24 @@ class CameraFragment : Fragment(), ObjectDetectorHelper.DetectorListener {
 
                 // Pass necessary information to OverlayView for drawing on the canvas
                 val detectionResult = resultBundle.results[0]
-                if (isAdded) {
+
+                val personDetected = detectionResult.detections().any { det ->
+                    det.categories().any { cat ->
+                        cat.categoryName().equals("person", ignoreCase = true) && cat.score() >= 0.80f
+                    }
+                }
+
+                fragmentCameraBinding.overlay.setPersonActive(personDetected)
+                if (personDetected && isAdded) {
                     fragmentCameraBinding.overlay.setResults(
                         detectionResult,
                         resultBundle.inputImageHeight,
                         resultBundle.inputImageWidth,
                         resultBundle.inputImageRotation
                     )
+                } else {
+                    fragmentCameraBinding.overlay.clear() // clears boxes (mask will still draw)
                 }
-
-                // Force a redraw
                 fragmentCameraBinding.overlay.invalidate()
             }
         }

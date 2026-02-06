@@ -40,8 +40,26 @@ class OverlayView(context: Context?, attrs: AttributeSet?) :
     private var outputRotate = 0
     private var runningMode: RunningMode = RunningMode.IMAGE
 
+    // Additional variables for Background Subtraction toggle
+    private var motionMask: Bitmap? = null
+    private var motionActive: Boolean = false
+    private var personActive: Boolean = false
+    private val maskPaint = Paint().apply { alpha = 120 } // semi-transparent
+
     init {
         initPaints()
+    }
+
+    // Functions getters and setters for motion mask and person detection
+    fun setMotionMask(mask: Bitmap?, motionActive: Boolean) {
+            this.motionMask = mask
+        this.motionActive = motionActive
+        invalidate()
+    }
+
+    fun setPersonActive(active: Boolean) {
+        this.personActive = active
+        invalidate()
     }
 
     fun clear() {
@@ -73,6 +91,23 @@ class OverlayView(context: Context?, attrs: AttributeSet?) :
 
     override fun draw(canvas: Canvas) {
         super.draw(canvas)
+        motionMask?.let { mask ->
+            // Stretch small mask to full overlay size
+            val dst = Rect(0, 0, width, height)
+            canvas.drawBitmap(mask, null, dst, maskPaint)
+        }
+
+// Simple activation text (top-left)
+        val status = when {
+            personActive -> "PERSON"
+            motionActive -> "MOTION"
+            else -> ""
+        }
+        if (status.isNotEmpty()) {
+            val text = "ACTIVE: $status"
+            canvas.drawText(text, 20f, 60f, textPaint)
+        }
+
         results?.detections()?.map {
             val boxRect = RectF(
                 it.boundingBox().left,
