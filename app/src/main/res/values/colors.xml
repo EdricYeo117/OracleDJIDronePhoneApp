@@ -15,13 +15,24 @@
     ~ limitations under the License.
 -->
 <resources>
-    <color name="mp_primary">#007F8B</color>
-    <color name="mp_variant">#12B5CB</color>
-    <color name="toolbar_background">#EEEEEE</color>
-    <color name="ic_launcher_background">#FFFFFF</color>
-    <color name="bottom_sheet_background">#EEEEEE</color>
-    <color name="bottom_sheet_text_color">@android:color/black</color>
-    <color name="icActive">#FFFFFFFF</color>
-    <color name="icFocused">#DDFFFFFF</color>
-    <color name="icPressed">#AAFFFFFF</color>
+    <!-- Oracle-ish palette -->
+    <color name="oracle_red">#C74634</color>
+    <color name="oracle_red_dark">#A63A2B</color>
+    <color name="oracle_black">#0B0B0B</color>
+    <color name="oracle_white">#FFFFFF</color>
+
+    <color name="oracle_surface">#161616</color>
+    <color name="oracle_divider">#2A2A2A</color>
+    <color name="oracle_text_on_dark">#EDEDED</color>
+
+    <!-- Bottom nav -->
+    <color name="oracle_nav_item">#EDEDED</color>
+
+    <!-- Missing resources being referenced -->
+    <color name="mp_primary">@color/oracle_red</color>
+    <color name="icPressed">@color/oracle_red_dark</color>
+    <color name="icFocused">#40C74634</color>
+    <color name="icActive">@color/oracle_red</color>
+    <color name="bottom_sheet_background">#1A1A1A</color>
+    <color name="bottom_sheet_text_color">#FFFFFF</color>
 </resources>

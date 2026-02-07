@@ -22,6 +22,9 @@ public final class ActivityMainBinding implements ViewBinding {
   private final CoordinatorLayout rootView;
 
   @NonNull
+  public final View divider;
+
+  @NonNull
   public final FragmentContainerView fragmentContainer;
 
   @NonNull
@@ -30,17 +33,14 @@ public final class ActivityMainBinding implements ViewBinding {
   @NonNull
   public final Toolbar toolbar;
 
-  @NonNull
-  public final View view;
-
-  private ActivityMainBinding(@NonNull CoordinatorLayout rootView,
+  private ActivityMainBinding(@NonNull CoordinatorLayout rootView, @NonNull View divider,
       @NonNull FragmentContainerView fragmentContainer, @NonNull BottomNavigationView navigation,
-      @NonNull Toolbar toolbar, @NonNull View view) {
+      @NonNull Toolbar toolbar) {
     this.rootView = rootView;
+    this.divider = divider;
     this.fragmentContainer = fragmentContainer;
     this.navigation = navigation;
     this.toolbar = toolbar;
-    this.view = view;
   }
 
   @Override
@@ -70,6 +70,12 @@ public final class ActivityMainBinding implements ViewBinding {
     // This is done to optimize the compiled bytecode for size and performance.
     int id;
     missingId: {
+      id = R.id.divider;
+      View divider = ViewBindings.findChildViewById(rootView, id);
+      if (divider == null) {
+        break missingId;
+      }
+
       id = R.id.fragment_container;
       FragmentContainerView fragmentContainer = ViewBindings.findChildViewById(rootView, id);
       if (fragmentContainer == null) {
@@ -88,14 +94,8 @@ public final class ActivityMainBinding implements ViewBinding {
         break missingId;
       }
 
-      id = R.id.view;
-      View view = ViewBindings.findChildViewById(rootView, id);
-      if (view == null) {
-        break missingId;
-      }
-
-      return new ActivityMainBinding((CoordinatorLayout) rootView, fragmentContainer, navigation,
-          toolbar, view);
+      return new ActivityMainBinding((CoordinatorLayout) rootView, divider, fragmentContainer,
+          navigation, toolbar);
     }
     String missingId = rootView.getResources().getResourceName(id);
     throw new NullPointerException("Missing required view with ID: ".concat(missingId));

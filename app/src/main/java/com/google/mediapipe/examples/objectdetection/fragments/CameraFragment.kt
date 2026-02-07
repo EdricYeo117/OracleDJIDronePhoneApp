@@ -15,6 +15,7 @@
  */
 package com.google.mediapipe.examples.objectdetection.fragments
 
+import IntruderApiClient
 import android.annotation.SuppressLint
 import android.content.res.Configuration
 import android.os.Bundle
@@ -43,24 +44,35 @@ import com.google.mediapipe.tasks.vision.core.RunningMode
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import com.google.mediapipe.tasks.vision.objectdetector.ObjectDetectorResult
+// Connectivity Imports
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
 
 class CameraFragment : Fragment(), ObjectDetectorHelper.DetectorListener {
 
+    private val intruderClient by lazy {
+        IntruderApiClient(
+            baseUrl = getString(R.string.red_base_url),
+            apiKey = getString(R.string.red_api_key)
+        )
+    }
+    private var netCallback: ConnectivityManager.NetworkCallback? = null
+    private var lastPingMs = 0L
+     var lastMotionActive: Boolean = false
+    private val pingCooldownMs = 5_000L  // prevents spam
     private val TAG = "ObjectDetection"
     private val motionGate = MotionGate()
-
     private var _fragmentCameraBinding: FragmentCameraBinding? = null
-
     private val fragmentCameraBinding
         get() = _fragmentCameraBinding!!
-
     private lateinit var objectDetectorHelper: ObjectDetectorHelper
     private val viewModel: MainViewModel by activityViewModels()
     private var preview: Preview? = null
     private var imageAnalyzer: ImageAnalysis? = null
     private var camera: Camera? = null
     private var cameraProvider: ProcessCameraProvider? = null
-
     /** Blocking ML operations are performed using this executor */
     private lateinit var backgroundExecutor: ExecutorService
 
@@ -73,7 +85,7 @@ class CameraFragment : Fragment(), ObjectDetectorHelper.DetectorListener {
                 requireActivity(),
                 R.id.fragment_container
             )
-                .navigate(CameraFragmentDirections.actionCameraToPermissions())
+                .navigate(R.id.permissions_fragment)
         }
 
         backgroundExecutor.execute {
@@ -99,6 +111,7 @@ class CameraFragment : Fragment(), ObjectDetectorHelper.DetectorListener {
     }
 
     override fun onDestroyView() {
+        stopNetworkCallback()
         _fragmentCameraBinding = null
         super.onDestroyView()
 
@@ -121,9 +134,53 @@ class CameraFragment : Fragment(), ObjectDetectorHelper.DetectorListener {
         return fragmentCameraBinding.root
     }
 
+    private fun refreshNetworkLabels() {
+        if (_fragmentCameraBinding == null) return
+        fragmentCameraBinding.tvRedIp.text = "RED: ${getString(R.string.red_base_url)}"
+
+        val ip = NetworkUtils.getPhoneIpv4(requireContext()) ?: "N/A"
+        val transport = NetworkUtils.getActiveTransport(requireContext())
+        fragmentCameraBinding.tvPhoneIp.text = "Phone IP ($transport): $ip"
+    }
+
+    private fun startNetworkCallback() {
+        val cm = requireContext().getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val callback = object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: Network) {
+                activity?.runOnUiThread { refreshNetworkLabels() }
+            }
+            override fun onLost(network: Network) {
+                activity?.runOnUiThread { refreshNetworkLabels() }
+            }
+            override fun onCapabilitiesChanged(network: Network, networkCapabilities: NetworkCapabilities) {
+                activity?.runOnUiThread { refreshNetworkLabels() }
+            }
+        }
+        netCallback = callback
+        cm.registerDefaultNetworkCallback(callback)
+    }
+
+    private fun stopNetworkCallback() {
+        val cb = netCallback ?: return
+        val cm = requireContext().getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        cm.unregisterNetworkCallback(cb)
+        netCallback = null
+    }
+
     @SuppressLint("MissingPermission")
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        // RED base URL from strings.xml (you already did this via IntruderApiClient)
+        fragmentCameraBinding.tvRedIp.text = "RED: ${getString(R.string.red_base_url)}"
+
+        // Phone IP (your NetworkUtils method)
+        val phoneIp = NetworkUtils.getPhoneIpv4(requireContext()) ?: "N/A"
+        fragmentCameraBinding.tvPhoneIp.text = "Phone IP (WiFi): $phoneIp"
+
+        // Initial status
+        fragmentCameraBinding.tvStatus.text = getString(R.string.status_idle)
+        fragmentCameraBinding.tvStatus.setBackgroundResource(R.drawable.bg_oracle_badge_outline)
 
         // Initialize our background executor
         backgroundExecutor = Executors.newSingleThreadExecutor()
@@ -150,6 +207,8 @@ class CameraFragment : Fragment(), ObjectDetectorHelper.DetectorListener {
 
         // Attach listeners to UI control widgets
         initBottomSheetControls()
+        refreshNetworkLabels()
+        startNetworkCallback()
         fragmentCameraBinding.overlay.setRunningMode(RunningMode.LIVE_STREAM)
     }
 
@@ -310,6 +369,7 @@ class CameraFragment : Fragment(), ObjectDetectorHelper.DetectorListener {
                 .also {
                     it.setAnalyzer(backgroundExecutor) { imageProxy ->
                         val decision = motionGate.update(imageProxy)
+                        lastMotionActive = decision.motionFrame
 
                         // Update UI mask (optional)
                         activity?.runOnUiThread {
@@ -358,32 +418,73 @@ class CameraFragment : Fragment(), ObjectDetectorHelper.DetectorListener {
     // to scale and place bounding boxes properly through OverlayView
     override fun onResults(resultBundle: ObjectDetectorHelper.ResultBundle) {
         activity?.runOnUiThread {
-            if (_fragmentCameraBinding != null) {
-                fragmentCameraBinding.bottomSheetLayout.inferenceTimeVal.text =
-                    String.format("%d ms", resultBundle.inferenceTime)
+            if (_fragmentCameraBinding == null) return@runOnUiThread
 
-                // Pass necessary information to OverlayView for drawing on the canvas
-                val detectionResult = resultBundle.results[0]
+            val detectionResult = resultBundle.results[0]
 
-                val personDetected = detectionResult.detections().any { det ->
-                    det.categories().any { cat ->
-                        cat.categoryName().equals("person", ignoreCase = true) && cat.score() >= 0.80f
+            var bestPersonScore = 0.0f
+            for (det in detectionResult.detections()) {
+                for (cat in det.categories()) {
+                    if (cat.categoryName().equals("person", ignoreCase = true)) {
+                        if (cat.score() > bestPersonScore) bestPersonScore = cat.score()
                     }
                 }
+            }
 
-                fragmentCameraBinding.overlay.setPersonActive(personDetected)
+            val personDetected = bestPersonScore >= 0.80f
+            val motionActive = lastMotionActive
 
-                if (personDetected) {
-                    fragmentCameraBinding.overlay.setResults(
-                        detectionResult,
-                        resultBundle.inputImageHeight,
-                        resultBundle.inputImageWidth,
-                        resultBundle.inputImageRotation
-                    )
-                } else {
-                    fragmentCameraBinding.overlay.clear()   // clears boxes but mask remains
+            // Status badge
+            when {
+                personDetected -> {
+                    fragmentCameraBinding.tvStatus.text = getString(R.string.status_person)
+                    fragmentCameraBinding.tvStatus.setBackgroundResource(R.drawable.bg_oracle_badge_solid)
                 }
-                fragmentCameraBinding.overlay.invalidate()
+                motionActive -> {
+                    fragmentCameraBinding.tvStatus.text = getString(R.string.status_motion)
+                    fragmentCameraBinding.tvStatus.setBackgroundResource(R.drawable.bg_oracle_badge_outline)
+                }
+                else -> {
+                    fragmentCameraBinding.tvStatus.text = getString(R.string.status_idle)
+                    fragmentCameraBinding.tvStatus.setBackgroundResource(R.drawable.bg_oracle_badge_outline)
+                }
+            }
+
+            fragmentCameraBinding.overlay.setPersonActive(personDetected)
+
+            // Draw boxes only if person detected
+            if (personDetected) {
+                fragmentCameraBinding.overlay.setResults(
+                    detectionResult,
+                    resultBundle.inputImageHeight,
+                    resultBundle.inputImageWidth,
+                    resultBundle.inputImageRotation
+                )
+            } else {
+                fragmentCameraBinding.overlay.clear() // clears boxes but mask can remain
+            }
+            fragmentCameraBinding.overlay.invalidate()
+
+            // =========================
+            // PING SERVER ON INTRUDER
+            // =========================
+            if (personDetected) {
+                val now = System.currentTimeMillis()
+                if (now - lastPingMs >= pingCooldownMs) {
+                    lastPingMs = now
+
+                    val json = """
+                    {
+                      "event_type": "PERSON_DETECTED",
+                      "timestamp_ms": $now,
+                      "device_id": "android-phone-01",
+                      "score": $bestPersonScore
+                    }
+                """.trimIndent()
+
+                    Log.d(TAG, "Intruder detected -> pinging server: $json")
+                    intruderClient.sendIntruderEvent(json)
+                }
             }
         }
     }

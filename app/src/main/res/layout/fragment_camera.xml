@@ -1,37 +1,85 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-    ~ Copyright 2022 The TensorFlow Authors. All Rights Reserved.
-    ~
-    ~ Licensed under the Apache License, Version 2.0 (the "License");
-    ~ you may not use this file except in compliance with the License.
-    ~ You may obtain a copy of the License at
-    ~
-    ~       http://www.apache.org/licenses/LICENSE-2.0
-    ~
-    ~ Unless required by applicable law or agreed to in writing, software
-    ~ distributed under the License is distributed on an "AS IS" BASIS,
-    ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    ~ See the License for the specific language governing permissions and
-    ~ limitations under the License.
--->
 <androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/camera_container"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="@android:color/black">
 
+    <!-- Top bar -->
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/topAppBar"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="@color/oracle_black"
+        app:title="@string/oracle_app_title"
+        app:titleTextColor="@color/oracle_white"
+        app:logo="@drawable/ic_oracle_logo"
+        app:logoDescription="@string/app_name"
+        app:contentInsetStartWithNavigation="0dp"
+        app:contentInsetStart="12dp"
+        app:contentInsetLeft="12dp" />
+
+    <TextView
+        android:id="@+id/tvStatus"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|start"
+        android:layout_marginStart="12dp"
+        android:layout_marginTop="88dp"
+        android:paddingStart="10dp"
+        android:paddingEnd="10dp"
+        android:paddingTop="6dp"
+        android:paddingBottom="6dp"
+        android:text="IDLE"
+        android:textSize="12sp"
+        android:textColor="@color/oracle_white"
+        android:background="@drawable/bg_oracle_badge_outline" />
+    <!-- Camera feed -->
     <androidx.camera.view.PreviewView
         android:id="@+id/view_finder"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        app:scaleType="fillStart"/>
+        app:scaleType="fillStart" />
 
+    <!-- ===== DEBUG NETWORK LABELS (TOP-LEFT) ===== -->
+    <LinearLayout
+        android:id="@+id/network_info_container"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|start"
+        android:layout_marginStart="12dp"
+        android:layout_marginTop="72dp"
+        android:background="@drawable/bg_oracle_badge_solid"
+        android:orientation="vertical"
+        android:padding="10dp">
+
+        <TextView
+            android:id="@+id/tvPhoneIp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Phone IP: -"
+            android:textColor="@color/oracle_white"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tvRedIp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="RED: -"
+            android:textColor="@color/oracle_white"
+            android:textSize="12sp" />
+    </LinearLayout>
+
+    <!-- Overlay draws: mask, boxes, ACTIVE: ... -->
     <com.google.mediapipe.examples.objectdetection.OverlayView
         android:id="@+id/overlay"
-        android:layout_height="match_parent"
-        android:layout_width="match_parent" />
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
 
     <include
         android:id="@+id/bottom_sheet_layout"
         layout="@layout/info_bottom_sheet" />
+
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

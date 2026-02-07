@@ -4,12 +4,15 @@ package com.google.mediapipe.examples.objectdetection.databinding;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.camera.view.PreviewView;
 import androidx.coordinatorlayout.widget.CoordinatorLayout;
 import androidx.viewbinding.ViewBinding;
 import androidx.viewbinding.ViewBindings;
+import com.google.android.material.appbar.MaterialToolbar;
 import com.google.mediapipe.examples.objectdetection.OverlayView;
 import com.google.mediapipe.examples.objectdetection.R;
 import java.lang.NullPointerException;
@@ -27,18 +30,40 @@ public final class FragmentCameraBinding implements ViewBinding {
   public final CoordinatorLayout cameraContainer;
 
   @NonNull
+  public final LinearLayout networkInfoContainer;
+
+  @NonNull
   public final OverlayView overlay;
+
+  @NonNull
+  public final MaterialToolbar topAppBar;
+
+  @NonNull
+  public final TextView tvPhoneIp;
+
+  @NonNull
+  public final TextView tvRedIp;
+
+  @NonNull
+  public final TextView tvStatus;
 
   @NonNull
   public final PreviewView viewFinder;
 
   private FragmentCameraBinding(@NonNull CoordinatorLayout rootView,
       @NonNull InfoBottomSheetBinding bottomSheetLayout, @NonNull CoordinatorLayout cameraContainer,
-      @NonNull OverlayView overlay, @NonNull PreviewView viewFinder) {
+      @NonNull LinearLayout networkInfoContainer, @NonNull OverlayView overlay,
+      @NonNull MaterialToolbar topAppBar, @NonNull TextView tvPhoneIp, @NonNull TextView tvRedIp,
+      @NonNull TextView tvStatus, @NonNull PreviewView viewFinder) {
     this.rootView = rootView;
     this.bottomSheetLayout = bottomSheetLayout;
     this.cameraContainer = cameraContainer;
+    this.networkInfoContainer = networkInfoContainer;
     this.overlay = overlay;
+    this.topAppBar = topAppBar;
+    this.tvPhoneIp = tvPhoneIp;
+    this.tvRedIp = tvRedIp;
+    this.tvStatus = tvStatus;
     this.viewFinder = viewFinder;
   }
 
@@ -78,9 +103,39 @@ public final class FragmentCameraBinding implements ViewBinding {
 
       CoordinatorLayout cameraContainer = (CoordinatorLayout) rootView;
 
+      id = R.id.network_info_container;
+      LinearLayout networkInfoContainer = ViewBindings.findChildViewById(rootView, id);
+      if (networkInfoContainer == null) {
+        break missingId;
+      }
+
       id = R.id.overlay;
       OverlayView overlay = ViewBindings.findChildViewById(rootView, id);
       if (overlay == null) {
+        break missingId;
+      }
+
+      id = R.id.topAppBar;
+      MaterialToolbar topAppBar = ViewBindings.findChildViewById(rootView, id);
+      if (topAppBar == null) {
+        break missingId;
+      }
+
+      id = R.id.tvPhoneIp;
+      TextView tvPhoneIp = ViewBindings.findChildViewById(rootView, id);
+      if (tvPhoneIp == null) {
+        break missingId;
+      }
+
+      id = R.id.tvRedIp;
+      TextView tvRedIp = ViewBindings.findChildViewById(rootView, id);
+      if (tvRedIp == null) {
+        break missingId;
+      }
+
+      id = R.id.tvStatus;
+      TextView tvStatus = ViewBindings.findChildViewById(rootView, id);
+      if (tvStatus == null) {
         break missingId;
       }
 
@@ -91,7 +146,8 @@ public final class FragmentCameraBinding implements ViewBinding {
       }
 
       return new FragmentCameraBinding((CoordinatorLayout) rootView, binding_bottomSheetLayout,
-          cameraContainer, overlay, viewFinder);
+          cameraContainer, networkInfoContainer, overlay, topAppBar, tvPhoneIp, tvRedIp, tvStatus,
+          viewFinder);
     }
     String missingId = rootView.getResources().getResourceName(id);
     throw new NullPointerException("Missing required view with ID: ".concat(missingId));
