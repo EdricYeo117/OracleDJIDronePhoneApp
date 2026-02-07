@@ -38,7 +38,10 @@ class MotionGate(
         val yPlane = image.planes[0]
         val buffer = yPlane.buffer
         val rowStride = yPlane.rowStride
-        val pixelStride = yPlane.pixelStride // for Y plane usually 1
+        val pixelStride = yPlane.pixelStride // Y plane usually 1
+
+        // Safety: ensure absolute get(pos) reads a consistent backing buffer
+        buffer.rewind()
 
         val width = image.width
         val height = image.height
@@ -71,15 +74,17 @@ class MotionGate(
 
             consecutive = 0
             frameCount = 1
-            // Return an empty mask for the first frame (optional)
             val emptyMask = Bitmap.createBitmap(dsW, dsH, Bitmap.Config.ALPHA_8)
             return MotionDecision(false, false, 0f, consecutive, emptyMask, dsW, dsH)
         }
 
-        val mask = ByteArray(total)
-        var changed = 0
+        val rawMask = ByteArray(total)
+        var rawChanged = 0
         var idx = 0
 
+        // IMPORTANT FIX:
+        // 1) compute diff against PREVIOUS bg value
+        // 2) update bg only when pixel is NOT changed (prevents "foreground bleeding" into background)
         for (y in 0 until height step step) {
             val rowBase = y * rowStride
             for (x in 0 until width step step) {
@@ -87,17 +92,17 @@ class MotionGate(
                 val cur = buffer.get(pos).toInt() and 0xFF
 
                 val prev = bg!![idx]
-                val updated = prev + alpha * (cur - prev)
-                bg!![idx] = updated
-
-                val d = abs(cur - updated).toInt()
+                val d = abs(cur - prev).toInt()
                 val isChanged = d >= diffThreshold
 
                 if (isChanged) {
-                    changed++
-                    mask[idx] = 0xFF.toByte()
+                    rawChanged++
+                    rawMask[idx] = 0xFF.toByte()
+                    // Optionally: do NOT update bg here
                 } else {
-                    mask[idx] = 0x00
+                    rawMask[idx] = 0x00
+                    // EMA update only on stable/background pixels
+                    bg!![idx] = prev + alpha * (cur - prev)
                 }
 
                 idx++
@@ -106,38 +111,44 @@ class MotionGate(
 
         frameCount++
 
-        val ratio = changed.toFloat() / total.toFloat()
+        val rawRatio = rawChanged.toFloat() / total.toFloat()
 
-// --- INSERT CLEANUP HERE ---
+        // Suppress global exposure changes (use RAW ratio, before cleanup)
+        if (rawRatio >= globalChangeIgnoreRatio) {
+            consecutive = 0
+            val maskBmp = Bitmap.createBitmap(dsW, dsH, Bitmap.Config.ALPHA_8)
+            maskBmp.copyPixelsFromBuffer(ByteBuffer.wrap(rawMask))
+            return MotionDecision(false, false, rawRatio, consecutive, maskBmp, dsW, dsH)
+        }
+
+        // --- CLEANUP (majority filter) ---
+        // Note: this affects how it LOOKS; it shouldn't affect the "global change ignore" check above.
         val cleaned = ByteArray(total)
         for (yy in 1 until dsH - 1) {
+            val row = yy * dsW
             for (xx in 1 until dsW - 1) {
                 var on = 0
-                for (dy in -1..1) for (dx in -1..1) {
-                    if (mask[(yy + dy) * dsW + (xx + dx)].toInt() != 0) on++
+                val base = row + xx
+                // 3x3 neighborhood count
+                for (dy in -1..1) {
+                    val nRow = (yy + dy) * dsW
+                    for (dx in -1..1) {
+                        if (rawMask[nRow + (xx + dx)].toInt() != 0) on++
+                    }
                 }
-                cleaned[yy * dsW + xx] = if (on >= 5) 0xFF.toByte() else 0x00
+                cleaned[base] = if (on >= 5) 0xFF.toByte() else 0x00
             }
         }
-// --- END CLEANUP ---
+        // --- END CLEANUP ---
 
-// Build mask bitmap (downsampled) from CLEANED mask
+        // (Optional but recommended) compute ratio from CLEANED mask for more stable decisions
+        var cleanedChanged = 0
+        for (i in 0 until total) if (cleaned[i].toInt() != 0) cleanedChanged++
+        val ratio = cleanedChanged.toFloat() / total.toFloat()
+
+        // Build mask bitmap (downsampled)
         val maskBmp = Bitmap.createBitmap(dsW, dsH, Bitmap.Config.ALPHA_8)
         maskBmp.copyPixelsFromBuffer(ByteBuffer.wrap(cleaned))
-
-        // Suppress global exposure changes
-        if (ratio >= globalChangeIgnoreRatio) {
-            consecutive = 0
-            return MotionDecision(
-                motionFrame = false,
-                triggered = false,
-                changedPixelRatio = ratio,
-                consecutiveMotionFrames = consecutive,
-                maskBitmap = maskBmp,
-                maskWidth = dsW,
-                maskHeight = dsH
-            )
-        }
 
         val motionFrame = ratio >= ratioThreshold
         consecutive = if (motionFrame) (consecutive + 1) else 0
