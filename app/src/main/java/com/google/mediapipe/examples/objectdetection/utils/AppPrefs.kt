@@ -1,7 +1,7 @@
 package com.google.mediapipe.examples.objectdetection.utils
 
 import android.content.Context
-import com.google.mediapipe.examples.objectdetection.SettingsKeys
+import com.google.mediapipe.examples.objectdetection.utils.SettingsKeys
 
 object AppPrefs {
     fun isPoseVerificationEnabled(context: Context): Boolean {

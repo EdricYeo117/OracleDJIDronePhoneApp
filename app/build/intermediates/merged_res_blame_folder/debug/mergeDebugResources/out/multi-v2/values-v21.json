@@ -1,7 +1,7 @@
 {
     "logs": [
         {
-            "outputFile": "com.google.mediapipe.examples.objectdetection.app-mergeDebugResources-50:/values-v21/values-v21.xml",
+            "outputFile": "com.google.mediapipe.examples.objectdetection.app-mergeDebugResources-55:/values-v21/values-v21.xml",
             "map": [
                 {
                     "source": "C:\\Users\\User\\.gradle\\caches\\8.14.3\\transforms\\46ed0bc3660c17eb062fcb21635968f5\\transformed\\core-1.13.0\\res\\values-v21\\values-v21.xml",

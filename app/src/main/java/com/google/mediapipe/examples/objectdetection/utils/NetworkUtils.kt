@@ -1,4 +1,4 @@
-package com.google.mediapipe.examples.objectdetection.fragments
+package com.google.mediapipe.examples.objectdetection.utils
 
 import android.content.Context
 import android.net.ConnectivityManager

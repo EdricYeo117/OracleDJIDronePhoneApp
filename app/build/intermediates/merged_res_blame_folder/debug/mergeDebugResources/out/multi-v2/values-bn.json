@@ -1,7 +1,7 @@
 {
     "logs": [
         {
-            "outputFile": "com.google.mediapipe.examples.objectdetection.app-mergeDebugResources-50:/values-bn/values-bn.xml",
+            "outputFile": "com.google.mediapipe.examples.objectdetection.app-mergeDebugResources-55:/values-bn/values-bn.xml",
             "map": [
                 {
                     "source": "C:\\Users\\User\\.gradle\\caches\\8.14.3\\transforms\\34c03c040fbd9ec172ffb180d23bbf71\\transformed\\appcompat-1.7.0\\res\\values-bn\\values-bn.xml",
@@ -40,6 +40,23 @@
                     }
                 },
                 {
+                    "source": "C:\\Users\\User\\.gradle\\caches\\8.14.3\\transforms\\849c2b04ba03efb15b737018e1a6c88a\\transformed\\navigation-ui-2.7.7\\res\\values-bn\\values-bn.xml",
+                    "from": {
+                        "startLines": "2,3",
+                        "startColumns": "4,4",
+                        "startOffsets": "55,167",
+                        "endColumns": "111,116",
+                        "endOffsets": "162,279"
+                    },
+                    "to": {
+                        "startLines": "111,112",
+                        "startColumns": "4,4",
+                        "startOffsets": "9509,9621",
+                        "endColumns": "111,116",
+                        "endOffsets": "9616,9733"
+                    }
+                },
+                {
                     "source": "C:\\Users\\User\\.gradle\\caches\\8.14.3\\transforms\\46ed0bc3660c17eb062fcb21635968f5\\transformed\\core-1.13.0\\res\\values-bn\\values-bn.xml",
                     "from": {
                         "startLines": "2,3,4,5,6,7,8,9",
@@ -54,23 +71,6 @@
                         "startOffsets": "3518,3617,3719,3821,3924,4025,4127,10140",
                         "endColumns": "98,101,101,102,100,101,119,100",
                         "endOffsets": "3612,3714,3816,3919,4020,4122,4242,10236"
-                    }
-                },
-                {
-                    "source": "C:\\Users\\User\\.gradle\\caches\\8.14.3\\transforms\\85a09a5baf2bbdc9f6945903909084dd\\transformed\\navigation-ui-2.3.5\\res\\values-bn\\values-bn.xml",
-                    "from": {
-                        "startLines": "2,3",
-                        "startColumns": "4,4",
-                        "startOffsets": "55,167",
-                        "endColumns": "111,116",
-                        "endOffsets": "162,279"
-                    },
-                    "to": {
-                        "startLines": "111,112",
-                        "startColumns": "4,4",
-                        "startOffsets": "9509,9621",
-                        "endColumns": "111,116",
-                        "endOffsets": "9616,9733"
                     }
                 }
             ]

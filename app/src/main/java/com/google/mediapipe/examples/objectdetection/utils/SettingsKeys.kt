@@ -1,4 +1,4 @@
-package com.google.mediapipe.examples.objectdetection
+package com.google.mediapipe.examples.objectdetection.utils
 
 object SettingsKeys {
     const val PREFS_NAME = "oracle_dji_drone_prefs"

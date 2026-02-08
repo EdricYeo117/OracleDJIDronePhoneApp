@@ -1,7 +1,7 @@
 {
     "logs": [
         {
-            "outputFile": "com.google.mediapipe.examples.objectdetection.app-mergeDebugResources-50:/values-et/values-et.xml",
+            "outputFile": "com.google.mediapipe.examples.objectdetection.app-mergeDebugResources-55:/values-et/values-et.xml",
             "map": [
                 {
                     "source": "C:\\Users\\User\\.gradle\\caches\\8.14.3\\transforms\\34c03c040fbd9ec172ffb180d23bbf71\\transformed\\appcompat-1.7.0\\res\\values-et\\values-et.xml",
@@ -21,23 +21,6 @@
                     }
                 },
                 {
-                    "source": "C:\\Users\\User\\.gradle\\caches\\8.14.3\\transforms\\85a09a5baf2bbdc9f6945903909084dd\\transformed\\navigation-ui-2.3.5\\res\\values-et\\values-et.xml",
-                    "from": {
-                        "startLines": "2,3",
-                        "startColumns": "4,4",
-                        "startOffsets": "55,164",
-                        "endColumns": "108,120",
-                        "endOffsets": "159,280"
-                    },
-                    "to": {
-                        "startLines": "111,112",
-                        "startColumns": "4,4",
-                        "startOffsets": "9427,9536",
-                        "endColumns": "108,120",
-                        "endOffsets": "9531,9652"
-                    }
-                },
-                {
                     "source": "C:\\Users\\User\\.gradle\\caches\\8.14.3\\transforms\\46ed0bc3660c17eb062fcb21635968f5\\transformed\\core-1.13.0\\res\\values-et\\values-et.xml",
                     "from": {
                         "startLines": "2,3,4,5,6,7,8,9",
@@ -52,6 +35,23 @@
                         "startOffsets": "3461,3556,3658,3756,3859,3965,4070,10065",
                         "endColumns": "94,101,97,102,105,104,119,100",
                         "endOffsets": "3551,3653,3751,3854,3960,4065,4185,10161"
+                    }
+                },
+                {
+                    "source": "C:\\Users\\User\\.gradle\\caches\\8.14.3\\transforms\\849c2b04ba03efb15b737018e1a6c88a\\transformed\\navigation-ui-2.7.7\\res\\values-et\\values-et.xml",
+                    "from": {
+                        "startLines": "2,3",
+                        "startColumns": "4,4",
+                        "startOffsets": "55,164",
+                        "endColumns": "108,120",
+                        "endOffsets": "159,280"
+                    },
+                    "to": {
+                        "startLines": "111,112",
+                        "startColumns": "4,4",
+                        "startOffsets": "9427,9536",
+                        "endColumns": "108,120",
+                        "endOffsets": "9531,9652"
                     }
                 },
                 {

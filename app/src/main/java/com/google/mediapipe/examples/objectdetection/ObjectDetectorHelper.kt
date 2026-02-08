@@ -32,6 +32,8 @@ import com.google.mediapipe.tasks.vision.core.ImageProcessingOptions
 import com.google.mediapipe.tasks.vision.core.RunningMode
 import com.google.mediapipe.tasks.vision.objectdetector.ObjectDetector
 import com.google.mediapipe.tasks.vision.objectdetector.ObjectDetectorResult
+import androidx.camera.core.ImageAnalysis
+import java.nio.ByteBuffer
 
 class ObjectDetectorHelper(
     var threshold: Float = THRESHOLD_DEFAULT,
@@ -246,29 +248,71 @@ class ObjectDetectorHelper(
         val frameTime = SystemClock.uptimeMillis()
         val rotationDegrees = imageProxy.imageInfo.rotationDegrees
 
-        val bitmapBuffer = Bitmap.createBitmap(
-            imageProxy.width,
-            imageProxy.height,
-            Bitmap.Config.ARGB_8888
-        )
-
-        // Convert ONCE (must be before close)
-        yuvToRgbConverter.yuvToRgb(imageProxy, bitmapBuffer)
-
-        // Close ONCE (and never touch imageProxy again)
-        imageProxy.close()
-
         // Update rotation + processing options
         if (rotationDegrees != imageRotation) {
             imageRotation = rotationDegrees
             imageProcessingOptions = ImageProcessingOptions.builder()
                 .setRotationDegrees(imageRotation)
                 .build()
-            // No need to recreate detector just for rotation
         }
 
-        val mpImage = BitmapImageBuilder(bitmapBuffer).build()
-        detectAsync(mpImage, frameTime)
+        val bitmapBuffer = Bitmap.createBitmap(
+            imageProxy.width,
+            imageProxy.height,
+            Bitmap.Config.ARGB_8888
+        )
+
+        try {
+            // If CameraX is configured with OUTPUT_IMAGE_FORMAT_RGBA_8888,
+            // imageProxy.format will be PixelFormat.RGBA_8888 (value 1).
+            // In that case, plane[0] already contains RGBA pixels.
+            if (imageProxy.format == ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888 ||
+                imageProxy.planes.size == 1
+            ) {
+                copyRgbaToBitmap(imageProxy, bitmapBuffer)
+            } else {
+                // Fallback: expected YUV_420_888 path
+                yuvToRgbConverter.yuvToRgb(imageProxy, bitmapBuffer)
+            }
+
+            val mpImage = BitmapImageBuilder(bitmapBuffer).build()
+            detectAsync(mpImage, frameTime)
+        } finally {
+            // Always close exactly once
+            imageProxy.close()
+        }
+    }
+
+    /**
+     * Copies an RGBA_8888 ImageProxy into an ARGB_8888 Bitmap.
+     * Works when analyzer uses OUTPUT_IMAGE_FORMAT_RGBA_8888.
+     */
+    private fun copyRgbaToBitmap(imageProxy: ImageProxy, bitmap: Bitmap) {
+        val plane = imageProxy.planes[0]
+        val buffer = plane.buffer
+        val rowStride = plane.rowStride
+        val pixelStride = plane.pixelStride // should be 4
+        val width = imageProxy.width
+        val height = imageProxy.height
+
+        buffer.rewind()
+
+        val expectedStride = width * pixelStride
+        if (rowStride == expectedStride) {
+            bitmap.copyPixelsFromBuffer(buffer)
+            return
+        }
+
+        // Row-by-row compacting if stride includes padding
+        val rowBuffer = ByteArray(rowStride)
+        val compact = ByteBuffer.allocateDirect(width * height * pixelStride)
+
+        for (row in 0 until height) {
+            buffer.get(rowBuffer, 0, rowStride)
+            compact.put(rowBuffer, 0, expectedStride)
+        }
+        compact.rewind()
+        bitmap.copyPixelsFromBuffer(compact)
     }
 
     // Run object detection using MediaPipe Object Detector API

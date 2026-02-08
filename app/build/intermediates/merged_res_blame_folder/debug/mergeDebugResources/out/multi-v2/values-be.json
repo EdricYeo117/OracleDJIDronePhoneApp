@@ -1,7 +1,7 @@
 {
     "logs": [
         {
-            "outputFile": "com.google.mediapipe.examples.objectdetection.app-mergeDebugResources-50:/values-be/values-be.xml",
+            "outputFile": "com.google.mediapipe.examples.objectdetection.app-mergeDebugResources-55:/values-be/values-be.xml",
             "map": [
                 {
                     "source": "C:\\Users\\User\\.gradle\\caches\\8.14.3\\transforms\\ac5a428940860e244d5341a6c685f4b6\\transformed\\material-1.12.0\\res\\values-be\\values-be.xml",
@@ -23,23 +23,6 @@
                     }
                 },
                 {
-                    "source": "C:\\Users\\User\\.gradle\\caches\\8.14.3\\transforms\\85a09a5baf2bbdc9f6945903909084dd\\transformed\\navigation-ui-2.3.5\\res\\values-be\\values-be.xml",
-                    "from": {
-                        "startLines": "2,3",
-                        "startColumns": "4,4",
-                        "startOffsets": "55,164",
-                        "endColumns": "108,125",
-                        "endOffsets": "159,285"
-                    },
-                    "to": {
-                        "startLines": "113,114",
-                        "startColumns": "4,4",
-                        "startOffsets": "9729,9838",
-                        "endColumns": "108,125",
-                        "endOffsets": "9833,9959"
-                    }
-                },
-                {
                     "source": "C:\\Users\\User\\.gradle\\caches\\8.14.3\\transforms\\46ed0bc3660c17eb062fcb21635968f5\\transformed\\core-1.13.0\\res\\values-be\\values-be.xml",
                     "from": {
                         "startLines": "2,3,4,5,6,7,8,9",
@@ -54,6 +37,23 @@
                         "startOffsets": "3587,3685,3787,3887,3988,4094,4197,10366",
                         "endColumns": "97,101,99,100,105,102,120,100",
                         "endOffsets": "3680,3782,3882,3983,4089,4192,4313,10462"
+                    }
+                },
+                {
+                    "source": "C:\\Users\\User\\.gradle\\caches\\8.14.3\\transforms\\849c2b04ba03efb15b737018e1a6c88a\\transformed\\navigation-ui-2.7.7\\res\\values-be\\values-be.xml",
+                    "from": {
+                        "startLines": "2,3",
+                        "startColumns": "4,4",
+                        "startOffsets": "55,164",
+                        "endColumns": "108,125",
+                        "endOffsets": "159,285"
+                    },
+                    "to": {
+                        "startLines": "113,114",
+                        "startColumns": "4,4",
+                        "startOffsets": "9729,9838",
+                        "endColumns": "108,125",
+                        "endOffsets": "9833,9959"
                     }
                 },
                 {

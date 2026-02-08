@@ -53,6 +53,10 @@ import com.google.mediapipe.examples.objectdetection.utils.PoseLandmarkerHelper
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
+import com.google.mediapipe.examples.objectdetection.utils.NetworkUtils
+
+import android.graphics.Bitmap
+import androidx.camera.core.ImageProxy
 
 class CameraFragment : Fragment(), ObjectDetectorHelper.DetectorListener {
 
@@ -345,7 +349,6 @@ class CameraFragment : Fragment(), ObjectDetectorHelper.DetectorListener {
             objectDetectorHelper.clearObjectDetector()
             objectDetectorHelper.setupObjectDetector()
         }
-
         fragmentCameraBinding.overlay.clear()
     }
 
@@ -392,7 +395,7 @@ class CameraFragment : Fragment(), ObjectDetectorHelper.DetectorListener {
                 .setTargetAspectRatio(AspectRatio.RATIO_4_3)
                 .setTargetRotation(fragmentCameraBinding.viewFinder.display.rotation)
                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-//                .setOutputImageFormat(OUTPUT_IMAGE_FORMAT_RGBA_8888)
+                .setOutputImageFormat(OUTPUT_IMAGE_FORMAT_RGBA_8888)
                 .build()
                 // The analyzer can then be assigned to the instance
                 .also {
@@ -419,7 +422,7 @@ class CameraFragment : Fragment(), ObjectDetectorHelper.DetectorListener {
                         try {
                             val bmp = rgba8888ImageProxyToBitmap(imageProxy)
                             latestPoseBitmap = bmp
-                            latestPoseTimestampMs = System.currentTimeMillis()
+                            latestPoseTimestampMs = android.os.SystemClock.uptimeMillis()
                         } catch (e: Exception) {
                             Log.w(TAG, "Failed to capture pose bitmap: ${e.message}")
                         }
@@ -508,7 +511,14 @@ class CameraFragment : Fragment(), ObjectDetectorHelper.DetectorListener {
                     resultBundle.inputImageRotation
                 )
             } else {
-                fragmentCameraBinding.overlay.clear()
+                // just stop drawing boxes, keep mask + pose if you want
+                fragmentCameraBinding.overlay.setResults(
+                    ObjectDetectorResult.create(emptyList(), 0), // not convenient in MP
+                    resultBundle.inputImageHeight,
+                    resultBundle.inputImageWidth,
+                    resultBundle.inputImageRotation
+                )
+                // OR simplest: add a helper method setDetectionResults(null) in OverlayView
             }
             fragmentCameraBinding.overlay.invalidate()
         }
@@ -530,7 +540,7 @@ class CameraFragment : Fragment(), ObjectDetectorHelper.DetectorListener {
             }
 
             // Pose path (optional toggle)
-            val nowMs = System.currentTimeMillis()
+            val nowMs = android.os.SystemClock.uptimeMillis()
             if ((nowMs - lastPoseRunMs) < poseMinIntervalMs) {
                 // Do not penalize poseFilter when we didn't run pose
                 return@execute
@@ -545,6 +555,17 @@ class CameraFragment : Fragment(), ObjectDetectorHelper.DetectorListener {
 
             val poseResult = poseHelper?.detectVideo(mpImage, ts)
             lastPoseRunMs = nowMs
+
+        // draw skeleton (even if not "persistent" yet)
+            activity?.runOnUiThread {
+                if (_fragmentCameraBinding == null) return@runOnUiThread
+                fragmentCameraBinding.overlay.setPoseResults(
+                    poseResult,
+                    resultBundle.inputImageHeight,
+                    resultBundle.inputImageWidth,
+                    resultBundle.inputImageRotation
+                )
+            }
 
             val hasPoseThisCheck = poseResult != null && poseResult.landmarks().isNotEmpty()
             val posePersistent = poseFilter.update(hasPoseThisCheck)
@@ -585,34 +606,31 @@ class CameraFragment : Fragment(), ObjectDetectorHelper.DetectorListener {
         }
     }
 
-    private fun rgba8888ImageProxyToBitmap(imageProxy: androidx.camera.core.ImageProxy): android.graphics.Bitmap {
+    private fun rgba8888ImageProxyToBitmap(imageProxy: ImageProxy): Bitmap {
         val width = imageProxy.width
         val height = imageProxy.height
         val plane = imageProxy.planes[0]
         val buffer = plane.buffer
         val rowStride = plane.rowStride
-        val pixelStride = plane.pixelStride // should be 4 for RGBA_8888
+        val pixelStride = plane.pixelStride // should be 4 for RGBA
 
-        val bitmap = android.graphics.Bitmap.createBitmap(width, height, android.graphics.Bitmap.Config.ARGB_8888)
-
+        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         buffer.rewind()
 
-        // If rowStride matches width * 4, we can copy directly
         val expectedStride = width * pixelStride
         if (rowStride == expectedStride) {
             bitmap.copyPixelsFromBuffer(buffer)
             return bitmap
         }
 
-        // Otherwise, compact row by row
         val rowBuffer = ByteArray(rowStride)
-        val compactBuffer = java.nio.ByteBuffer.allocateDirect(width * height * pixelStride)
+        val compact = java.nio.ByteBuffer.allocateDirect(width * height * pixelStride)
         for (row in 0 until height) {
             buffer.get(rowBuffer, 0, rowStride)
-            compactBuffer.put(rowBuffer, 0, expectedStride)
+            compact.put(rowBuffer, 0, expectedStride)
         }
-        compactBuffer.rewind()
-        bitmap.copyPixelsFromBuffer(compactBuffer)
+        compact.rewind()
+        bitmap.copyPixelsFromBuffer(compact)
         return bitmap
     }
 }
