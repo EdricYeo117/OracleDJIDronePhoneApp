@@ -4,7 +4,7 @@
             "outputFile": "com.google.mediapipe.examples.objectdetection.app-mergeDebugResources-55:/values-w320dp-land-v13/values-w320dp-land-v13.xml",
             "map": [
                 {
-                    "source": "C:\\Users\\User\\.gradle\\caches\\8.14.3\\transforms\\ac5a428940860e244d5341a6c685f4b6\\transformed\\material-1.12.0\\res\\values-w320dp-land-v13\\values-w320dp-land-v13.xml",
+                    "source": "C:\\Users\\User\\.gradle\\caches\\9.1.0\\transforms\\0b0d6c1fe31c4092c8dc960044865148\\workspace\\transformed\\material-1.12.0\\res\\values-w320dp-land-v13\\values-w320dp-land-v13.xml",
                     "from": {
                         "startLines": "2,3",
                         "startColumns": "4,4",

@@ -36,7 +36,8 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:taskAffinity=""
         android:theme="@style/Theme.ObjectDetection"
-        tools:ignore="AllowBackup">
+        tools:ignore="AllowBackup"
+        android:networkSecurityConfig="@xml/network_security_config">
 
         <activity
             android:name=".MainActivity"

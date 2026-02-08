@@ -68,6 +68,10 @@
         "source": "com.google.mediapipe.examples.objectdetection.app-main-59:/layout/info_bottom_sheet.xml"
     },
     {
+        "merged": "com.google.mediapipe.examples.objectdetection.app-debug-57:/xml_network_security_config.xml.flat",
+        "source": "com.google.mediapipe.examples.objectdetection.app-main-59:/xml/network_security_config.xml"
+    },
+    {
         "merged": "com.google.mediapipe.examples.objectdetection.app-debug-57:/color_bg_nav_item.xml.flat",
         "source": "com.google.mediapipe.examples.objectdetection.app-main-59:/color/bg_nav_item.xml"
     },

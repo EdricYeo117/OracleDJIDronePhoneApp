@@ -111,3 +111,4 @@ style AppTheme
 style AppThemeProgressStyle
 style BottomSheetSpinnerItemStyle
 style Theme.ObjectDetection
+xml network_security_config

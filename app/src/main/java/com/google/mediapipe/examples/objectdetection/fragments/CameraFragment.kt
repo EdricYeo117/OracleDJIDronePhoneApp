@@ -63,7 +63,7 @@ class CameraFragment : Fragment(), ObjectDetectorHelper.DetectorListener {
     private val intruderClient by lazy {
         IntruderApiClient(
             baseUrl = getString(R.string.red_base_url),
-            apiKey = getString(R.string.red_api_key)
+            apiKey = getString(R.string.red_api_key).trim()
         )
     }
     private var netCallback: ConnectivityManager.NetworkCallback? = null
