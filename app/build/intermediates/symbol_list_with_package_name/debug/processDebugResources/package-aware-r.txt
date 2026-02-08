@@ -3195,6 +3195,7 @@ id confirm_button
 id container
 id content
 id contentPanel
+id content_container
 id contiguous
 id coordinator
 id cos
@@ -3500,6 +3501,7 @@ id stop
 id stretch
 id submenuarrow
 id submit_area
+id switch_increased_accuracy
 id tabMode
 id tag_accessibility_actions
 id tag_accessibility_clickable_spans
@@ -3541,7 +3543,6 @@ id title_template
 id toggle
 id toolbar
 id top
-id topAppBar
 id topPanel
 id touch_outside
 id transitionToEnd

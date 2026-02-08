@@ -45,6 +45,7 @@ id action_permissions_to_camera
 id bottom_sheet_layout
 id camera_container
 id camera_fragment
+id content_container
 id divider
 id fabGetContent
 id fragment_container
@@ -63,11 +64,11 @@ id permissions_fragment
 id progress
 id spinner_delegate
 id spinner_model
+id switch_increased_accuracy
 id threshold_minus
 id threshold_plus
 id threshold_value
 id toolbar
-id topAppBar
 id tvPhoneIp
 id tvPlaceholder
 id tvRedIp

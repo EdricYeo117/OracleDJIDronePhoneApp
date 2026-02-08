@@ -24,12 +24,12 @@
         "source": "C:\\Users\\User\\.gradle\\daemon\\8.14.3\\com.google.mediapipe.examples.objectdetection.app-main-54:\\mipmap-hdpi\\ic_launcher_round.png"
     },
     {
-        "merged": "C:\\Users\\User\\.gradle\\daemon\\8.14.3\\com.google.mediapipe.examples.objectdetection.app-debug-52:\\menu_menu_bottom_nav.xml.flat",
-        "source": "C:\\Users\\User\\.gradle\\daemon\\8.14.3\\com.google.mediapipe.examples.objectdetection.app-main-54:\\menu\\menu_bottom_nav.xml"
-    },
-    {
         "merged": "C:\\Users\\User\\.gradle\\daemon\\8.14.3\\com.google.mediapipe.examples.objectdetection.app-debug-52:\\drawable_icn_chevron_up.png.flat",
         "source": "C:\\Users\\User\\.gradle\\daemon\\8.14.3\\com.google.mediapipe.examples.objectdetection.app-main-54:\\drawable\\icn_chevron_up.png"
+    },
+    {
+        "merged": "C:\\Users\\User\\.gradle\\daemon\\8.14.3\\com.google.mediapipe.examples.objectdetection.app-debug-52:\\menu_menu_bottom_nav.xml.flat",
+        "source": "C:\\Users\\User\\.gradle\\daemon\\8.14.3\\com.google.mediapipe.examples.objectdetection.app-main-54:\\menu\\menu_bottom_nav.xml"
     },
     {
         "merged": "C:\\Users\\User\\.gradle\\daemon\\8.14.3\\com.google.mediapipe.examples.objectdetection.app-debug-52:\\mipmap-xxxhdpi_ic_launcher_round.png.flat",
@@ -106,10 +106,6 @@
     {
         "merged": "C:\\Users\\User\\.gradle\\daemon\\8.14.3\\com.google.mediapipe.examples.objectdetection.app-debug-52:\\drawable_ic_oracle_logo.xml.flat",
         "source": "C:\\Users\\User\\.gradle\\daemon\\8.14.3\\com.google.mediapipe.examples.objectdetection.app-main-54:\\drawable\\ic_oracle_logo.xml"
-    },
-    {
-        "merged": "C:\\Users\\User\\.gradle\\daemon\\8.14.3\\com.google.mediapipe.examples.objectdetection.app-debug-52:\\navigation_nav_graph.xml.flat",
-        "source": "C:\\Users\\User\\.gradle\\daemon\\8.14.3\\com.google.mediapipe.examples.objectdetection.app-main-54:\\navigation\\nav_graph.xml"
     },
     {
         "merged": "C:\\Users\\User\\.gradle\\daemon\\8.14.3\\com.google.mediapipe.examples.objectdetection.app-debug-52:\\mipmap-xxhdpi_ic_launcher_round.png.flat",

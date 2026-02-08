@@ -4,6 +4,7 @@ package com.google.mediapipe.examples.objectdetection.databinding;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
@@ -12,7 +13,7 @@ import androidx.camera.view.PreviewView;
 import androidx.coordinatorlayout.widget.CoordinatorLayout;
 import androidx.viewbinding.ViewBinding;
 import androidx.viewbinding.ViewBindings;
-import com.google.android.material.appbar.MaterialToolbar;
+import com.google.android.material.switchmaterial.SwitchMaterial;
 import com.google.mediapipe.examples.objectdetection.OverlayView;
 import com.google.mediapipe.examples.objectdetection.R;
 import java.lang.NullPointerException;
@@ -30,13 +31,16 @@ public final class FragmentCameraBinding implements ViewBinding {
   public final CoordinatorLayout cameraContainer;
 
   @NonNull
+  public final FrameLayout contentContainer;
+
+  @NonNull
   public final LinearLayout networkInfoContainer;
 
   @NonNull
   public final OverlayView overlay;
 
   @NonNull
-  public final MaterialToolbar topAppBar;
+  public final SwitchMaterial switchIncreasedAccuracy;
 
   @NonNull
   public final TextView tvPhoneIp;
@@ -52,15 +56,17 @@ public final class FragmentCameraBinding implements ViewBinding {
 
   private FragmentCameraBinding(@NonNull CoordinatorLayout rootView,
       @NonNull InfoBottomSheetBinding bottomSheetLayout, @NonNull CoordinatorLayout cameraContainer,
-      @NonNull LinearLayout networkInfoContainer, @NonNull OverlayView overlay,
-      @NonNull MaterialToolbar topAppBar, @NonNull TextView tvPhoneIp, @NonNull TextView tvRedIp,
-      @NonNull TextView tvStatus, @NonNull PreviewView viewFinder) {
+      @NonNull FrameLayout contentContainer, @NonNull LinearLayout networkInfoContainer,
+      @NonNull OverlayView overlay, @NonNull SwitchMaterial switchIncreasedAccuracy,
+      @NonNull TextView tvPhoneIp, @NonNull TextView tvRedIp, @NonNull TextView tvStatus,
+      @NonNull PreviewView viewFinder) {
     this.rootView = rootView;
     this.bottomSheetLayout = bottomSheetLayout;
     this.cameraContainer = cameraContainer;
+    this.contentContainer = contentContainer;
     this.networkInfoContainer = networkInfoContainer;
     this.overlay = overlay;
-    this.topAppBar = topAppBar;
+    this.switchIncreasedAccuracy = switchIncreasedAccuracy;
     this.tvPhoneIp = tvPhoneIp;
     this.tvRedIp = tvRedIp;
     this.tvStatus = tvStatus;
@@ -103,6 +109,12 @@ public final class FragmentCameraBinding implements ViewBinding {
 
       CoordinatorLayout cameraContainer = (CoordinatorLayout) rootView;
 
+      id = R.id.content_container;
+      FrameLayout contentContainer = ViewBindings.findChildViewById(rootView, id);
+      if (contentContainer == null) {
+        break missingId;
+      }
+
       id = R.id.network_info_container;
       LinearLayout networkInfoContainer = ViewBindings.findChildViewById(rootView, id);
       if (networkInfoContainer == null) {
@@ -115,9 +127,9 @@ public final class FragmentCameraBinding implements ViewBinding {
         break missingId;
       }
 
-      id = R.id.topAppBar;
-      MaterialToolbar topAppBar = ViewBindings.findChildViewById(rootView, id);
-      if (topAppBar == null) {
+      id = R.id.switch_increased_accuracy;
+      SwitchMaterial switchIncreasedAccuracy = ViewBindings.findChildViewById(rootView, id);
+      if (switchIncreasedAccuracy == null) {
         break missingId;
       }
 
@@ -146,8 +158,8 @@ public final class FragmentCameraBinding implements ViewBinding {
       }
 
       return new FragmentCameraBinding((CoordinatorLayout) rootView, binding_bottomSheetLayout,
-          cameraContainer, networkInfoContainer, overlay, topAppBar, tvPhoneIp, tvRedIp, tvStatus,
-          viewFinder);
+          cameraContainer, contentContainer, networkInfoContainer, overlay, switchIncreasedAccuracy,
+          tvPhoneIp, tvRedIp, tvStatus, viewFinder);
     }
     String missingId = rootView.getResources().getResourceName(id);
     throw new NullPointerException("Missing required view with ID: ".concat(missingId));
