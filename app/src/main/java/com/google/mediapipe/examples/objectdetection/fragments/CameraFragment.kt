@@ -196,29 +196,38 @@ class CameraFragment : Fragment(), ObjectDetectorHelper.DetectorListener {
     @SuppressLint("MissingPermission")
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        // Switch to activate increased accuracy mode
+
         increasedAccuracySwitch = view.findViewById(R.id.switch_increased_accuracy)
-        // load saved state
-        increasedAccuracySwitch.isChecked = AppPrefs.isPoseVerificationEnabled(requireContext())
+
+        // Load saved state once
+        val enabled = AppPrefs.isPoseVerificationEnabled(requireContext())
+        increasedAccuracySwitch.isChecked = enabled
+
+        // ✅ apply immediately to overlay on startup
+        fragmentCameraBinding.overlay.setPoseEnabled(enabled)
 
         increasedAccuracySwitch.setOnCheckedChangeListener { _, isChecked ->
             AppPrefs.setPoseVerificationEnabled(requireContext(), isChecked)
-        }
-        // RED base URL from strings.xml (you already did this via IntruderApiClient)
-        fragmentCameraBinding.tvRedIp.text = "RED: ${getString(R.string.red_base_url)}"
 
-        // Phone IP (your NetworkUtils method)
+            // ✅ immediately show/hide skeleton
+            fragmentCameraBinding.overlay.setPoseEnabled(isChecked)
+
+            if (!isChecked) {
+                poseFilter.reset()
+                latestPoseBitmap = null
+            }
+        }
+
+        // ... keep the rest of your code the same ...
+        fragmentCameraBinding.tvRedIp.text = "RED: ${getString(R.string.red_base_url)}"
         val phoneIp = NetworkUtils.getPhoneIpv4(requireContext()) ?: "N/A"
         fragmentCameraBinding.tvPhoneIp.text = "Phone IP (WiFi): $phoneIp"
 
-        // Initial status
         fragmentCameraBinding.tvStatus.text = getString(R.string.status_idle)
         fragmentCameraBinding.tvStatus.setBackgroundResource(R.drawable.bg_oracle_badge_outline)
 
-        // Initialize our background executor
         backgroundExecutor = Executors.newSingleThreadExecutor()
 
-        // Create the ObjectDetectionHelper that will handle the inference
         backgroundExecutor.execute {
             objectDetectorHelper =
                 ObjectDetectorHelper(
@@ -231,14 +240,9 @@ class CameraFragment : Fragment(), ObjectDetectorHelper.DetectorListener {
                     runningMode = RunningMode.LIVE_STREAM
                 )
 
-            // Wait for the views to be properly laid out
-            fragmentCameraBinding.viewFinder.post {
-                // Set up the camera and its use cases
-                setUpCamera()
-            }
+            fragmentCameraBinding.viewFinder.post { setUpCamera() }
         }
 
-        // Attach listeners to UI control widgets
         initBottomSheetControls()
         refreshNetworkLabels()
         startNetworkCallback()
@@ -527,13 +531,17 @@ class CameraFragment : Fragment(), ObjectDetectorHelper.DetectorListener {
         backgroundExecutor.execute {
             val poseEnabled = AppPrefs.isPoseVerificationEnabled(requireContext())
 
-            // If person isn't persistent yet, don't proceed
             if (!personPersistent) {
                 poseFilter.reset()
                 return@execute
             }
 
-            // Fast path: no pose
+            // ✅ motion gate for pose
+            if (!lastMotionActive) {
+                poseFilter.reset()
+                return@execute
+            }
+
             if (!poseEnabled) {
                 pingIntruder(bestPersonScore)
                 return@execute

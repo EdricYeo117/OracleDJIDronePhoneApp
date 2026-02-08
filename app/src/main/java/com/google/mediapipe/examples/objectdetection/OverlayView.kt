@@ -54,6 +54,9 @@ class OverlayView(context: Context?, attrs: AttributeSet?) : View(context, attrs
     private var motionActive: Boolean = false
     private var personActive: Boolean = false
     private val maskPaint = Paint().apply { alpha = 120 } // semi-transparent
+    private var poseEnabled: Boolean = true
+    private val transformMatrix = Matrix()
+    private val tmpPts = FloatArray(2)
 
     init {
         initPaints()
@@ -98,6 +101,12 @@ class OverlayView(context: Context?, attrs: AttributeSet?) : View(context, attrs
         invalidate()
     }
 
+    fun setPoseEnabled(enabled: Boolean) {
+        poseEnabled = enabled
+        if (!enabled) poseResults = null
+        invalidate()
+    }
+
     // -----------------------------
     // Public API (Pose Landmarker)
     // -----------------------------
@@ -115,11 +124,15 @@ class OverlayView(context: Context?, attrs: AttributeSet?) : View(context, attrs
         imageRotation: Int
     ) {
         poseResults = poseLandmarkerResults
-        this.outputWidth = outputWidth
-        this.outputHeight = outputHeight
-        this.outputRotate = imageRotation
 
-        recalcScaleFactor()
+        // Only update geometry if we got real dimensions
+        if (outputWidth > 0 && outputHeight > 0) {
+            this.outputWidth = outputWidth
+            this.outputHeight = outputHeight
+            this.outputRotate = imageRotation
+            recalcScaleFactor()
+        }
+
         invalidate()
     }
 
@@ -150,14 +163,14 @@ class OverlayView(context: Context?, attrs: AttributeSet?) : View(context, attrs
         }
 
         // 2) Draw activation text (top-left)
-        val status = when {
-            personActive -> "PERSON"
-            motionActive -> "MOTION"
-            else -> ""
-        }
-        if (status.isNotEmpty()) {
-            canvas.drawText("ACTIVE: $status", 20f, 60f, textPaint)
-        }
+//        val status = when {
+//            personActive -> "PERSON"
+//            motionActive -> "MOTION"
+//            else -> ""
+//        }
+//        if (status.isNotEmpty()) {
+//            canvas.drawText("ACTIVE: $status", 20f, 60f, textPaint)
+//        }
 
         // 3) Draw pose skeleton (NEW) — behind boxes or above? (currently behind boxes)
         drawPose(canvas)
@@ -206,6 +219,7 @@ class OverlayView(context: Context?, attrs: AttributeSet?) : View(context, attrs
         val pose = poseResults ?: return
         val people = pose.landmarks()
         if (people.isEmpty()) return
+        if (!poseEnabled) return
 
         // Each "person" is a list of landmarks
         for (personLandmarks in people) {
@@ -287,30 +301,26 @@ class OverlayView(context: Context?, attrs: AttributeSet?) : View(context, attrs
         return boxRect
     }
 
+    private fun updateTransformMatrix() {
+        transformMatrix.reset()
+        transformMatrix.postTranslate(-outputWidth / 2f, -outputHeight / 2f)
+        transformMatrix.postRotate(outputRotate.toFloat())
+        if (outputRotate == 90 || outputRotate == 270) {
+            transformMatrix.postTranslate(outputHeight / 2f, outputWidth / 2f)
+        } else {
+            transformMatrix.postTranslate(outputWidth / 2f, outputHeight / 2f)
+        }
+    }
+
     /**
      * Maps a point in output-image coordinates into view coordinates,
      * applying the same rotation transform and scaleFactor.
      */
     private fun mapPointToView(x: Float, y: Float): PointF {
-        val pts = floatArrayOf(x, y)
-
-        val matrix = Matrix()
-        matrix.postTranslate(-outputWidth / 2f, -outputHeight / 2f)
-        matrix.postRotate(outputRotate.toFloat())
-
-        if (outputRotate == 90 || outputRotate == 270) {
-            matrix.postTranslate(outputHeight / 2f, outputWidth / 2f)
-        } else {
-            matrix.postTranslate(outputWidth / 2f, outputHeight / 2f)
-        }
-
-        matrix.mapPoints(pts)
-
-        // Scale to view
-        pts[0] *= scaleFactor
-        pts[1] *= scaleFactor
-
-        return PointF(pts[0], pts[1])
+        tmpPts[0] = x
+        tmpPts[1] = y
+        transformMatrix.mapPoints(tmpPts)
+        return PointF(tmpPts[0] * scaleFactor, tmpPts[1] * scaleFactor)
     }
 
     // -----------------------------
