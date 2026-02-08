@@ -16,6 +16,25 @@ data class MotionDecision(
     val maskHeight: Int
 )
 
+/**
+ * Implements a lightweight background subtraction algorithm to detect motion.
+ *
+ * Algorithm:
+ * 1. **Downsampling**: Reduces processing load by working on a smaller grid.
+ * 2. **EMA Background**: Maintains an Exponential Moving Average of the background.
+ * 3. **Diffing**: Compares current frame to background.
+ * 4. **Global Change Rejection**: Ignores frames where too many pixels change at once (lighting shifts).
+ * 5. **Majority Filter**: Cleans up noise using a 3x3 neighborhood filter.
+ *
+ * @param downsampleStep Step size for downsampling (e.g., 6 means utilize every 6th pixel).
+ * @param alpha The learning rate for the background model (0.0 - 1.0).
+ * @param diffThreshold Pixel intensity difference to consider a pixel "changed".
+ * @param ratioThreshold Fraction of pixels that must change to trigger "motion".
+ * @param minConsecutive Number of consecutive motion frames required to trigger.
+ * @param cooldownMs Minimum time between triggers.
+ * @param globalChangeIgnoreRatio If changed pixels > this ratio, ignore the frame (global lighting change).
+ * @param warmupFrames Number of initial frames to build the background model.
+ */
 class MotionGate(
     private val downsampleStep: Int = 6,        // 2..8 typical
     private val alpha: Float = 0.08f,           // EMA update rate (0.02..0.10)

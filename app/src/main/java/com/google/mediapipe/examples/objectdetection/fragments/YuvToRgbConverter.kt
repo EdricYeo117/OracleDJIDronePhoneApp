@@ -10,6 +10,10 @@ import android.renderscript.ScriptIntrinsicYuvToRGB
 import android.renderscript.Type
 import androidx.camera.core.ImageProxy
 
+/**
+ * Helper class to convert ImageProxy YUV_420_888 buffers to RGBA Bitmaps
+ * using RenderScript for hardware acceleration.
+ */
 class YuvToRgbConverter(context: Context) {
     private val rs: RenderScript = RenderScript.create(context)
     private val script: ScriptIntrinsicYuvToRGB =

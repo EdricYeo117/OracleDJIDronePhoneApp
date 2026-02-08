@@ -40,6 +40,12 @@ import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
 
+/**
+ * Fragment that allows users to pick an image or video from their gallery
+ * and run object detection on it.
+ *
+ * Useful for testing the model on pre-recorded data.
+ */
 class GalleryFragment : Fragment(), ObjectDetectorHelper.DetectorListener {
 
     enum class MediaType {

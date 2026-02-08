@@ -58,6 +58,17 @@ import com.google.mediapipe.examples.objectdetection.utils.NetworkUtils
 import android.graphics.Bitmap
 import androidx.camera.core.ImageProxy
 
+/**
+ * The core fragment for the live camera feed.
+ *
+ * Responsibilities:
+ * - Setting up CameraX (Preview and ImageAnalysis).
+ * - Running background subtraction via [MotionGate].
+ * - Running object detection via [ObjectDetectorHelper].
+ * - Running pose verification via [PoseLandmarkerHelper].
+ * - Updating the UI [OverlayView] and status text.
+ * - Sending intruder alerts via [IntruderApiClient].
+ */
 class CameraFragment : Fragment(), ObjectDetectorHelper.DetectorListener {
 
     private val intruderClient by lazy {
@@ -68,7 +79,7 @@ class CameraFragment : Fragment(), ObjectDetectorHelper.DetectorListener {
     }
     private var netCallback: ConnectivityManager.NetworkCallback? = null
     private var lastPingMs = 0L
-     var lastMotionActive: Boolean = false
+    var lastMotionActive: Boolean = false
     private val pingCooldownMs = 5_000L  // prevents spam
     private val TAG = "ObjectDetection"
     private val motionGate = MotionGate()
@@ -463,8 +474,18 @@ class CameraFragment : Fragment(), ObjectDetectorHelper.DetectorListener {
             fragmentCameraBinding.viewFinder.display.rotation
     }
 
-    // Update UI after objects have been detected. Extracts original image height/width
-    // to scale and place bounding boxes properly through OverlayView
+    /**
+     * Callback from [ObjectDetectorHelper].
+     *
+     * This method:
+     * 1. Filters results for "person" class with high confidence.
+     * 2. Updates persistence filters to avoid flickering.
+     * 3. Updates the UI overlay.
+     * 4. Triggers secondary pose verification if enabled.
+     * 5. Sends an alert if an intruder is confirmed.
+     *
+     * @param resultBundle The detection results including inference time and image dimensions.
+     */
     override fun onResults(resultBundle: ObjectDetectorHelper.ResultBundle) {
         if (_fragmentCameraBinding == null) return
 
@@ -564,7 +585,7 @@ class CameraFragment : Fragment(), ObjectDetectorHelper.DetectorListener {
             val poseResult = poseHelper?.detectVideo(mpImage, ts)
             lastPoseRunMs = nowMs
 
-        // draw skeleton (even if not "persistent" yet)
+            // draw skeleton (even if not "persistent" yet)
             activity?.runOnUiThread {
                 if (_fragmentCameraBinding == null) return@runOnUiThread
                 fragmentCameraBinding.overlay.setPoseResults(

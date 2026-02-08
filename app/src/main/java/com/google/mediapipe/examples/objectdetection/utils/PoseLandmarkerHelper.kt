@@ -15,6 +15,22 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.nio.ByteBuffer
 import com.google.mediapipe.tasks.core.Delegate
 
+/**
+ * Wrapper for MediaPipe Pose Landmarker.
+ *
+ * This class abstracts the initialization and inference logic for pose detection.
+ * It supports different running modes (VIDEO, LIVE_STREAM, IMAGE) and hardware delegates.
+ *
+ * @param context App context.
+ * @param runningMode MediaPipe running mode.
+ * @param modelAssetPath Path to the TFLite/Task model file.
+ * @param minPoseDetectionConfidence Confidence threshold for detection.
+ * @param minPoseTrackingConfidence Confidence threshold for tracking.
+ * @param minPosePresenceConfidence Confidence threshold for presence.
+ * @param currentDelegate CPU or GPU.
+ * @param currentModel Model complexity (Lite, Full, Heavy).
+ * @param poseLandmarkerHelperListener Callback for results/errors.
+ */
 class PoseLandmarkerHelper(
     private val context: Context,
     private val runningMode: RunningMode,

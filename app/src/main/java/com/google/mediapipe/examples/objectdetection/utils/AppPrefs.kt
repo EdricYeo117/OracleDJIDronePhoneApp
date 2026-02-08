@@ -3,6 +3,9 @@ package com.google.mediapipe.examples.objectdetection.utils
 import android.content.Context
 import com.google.mediapipe.examples.objectdetection.utils.SettingsKeys
 
+/**
+ * Simple wrapper around SharedPreferences for persisting application settings.
+ */
 object AppPrefs {
     fun isPoseVerificationEnabled(context: Context): Boolean {
         val sp = context.getSharedPreferences(SettingsKeys.PREFS_NAME, Context.MODE_PRIVATE)

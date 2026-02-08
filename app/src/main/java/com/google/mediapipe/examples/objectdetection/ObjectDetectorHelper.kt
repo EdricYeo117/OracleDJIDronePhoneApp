@@ -35,6 +35,23 @@ import com.google.mediapipe.tasks.vision.objectdetector.ObjectDetectorResult
 import androidx.camera.core.ImageAnalysis
 import java.nio.ByteBuffer
 
+/**
+ * Helper class for wrapping MediaPipe Object Detection logic.
+ *
+ * Handles:
+ * - Initialization of the [ObjectDetector]
+ * - Delegate selection (CPU vs GPU)
+ * - Model selection
+ * - Inference on Live Streams, Images, and Videos
+ *
+ * @param threshold Minimum confidence score for a detection to be considered valid.
+ * @param maxResults Maximum number of objects to detect in a single frame.
+ * @param currentDelegate The hardware delegate to use (CPU or GPU).
+ * @param currentModel The index of the model to use.
+ * @param runningMode The MediaPipe running mode (IMAGE, VIDEO, or LIVE_STREAM).
+ * @param context Application context.
+ * @param objectDetectorListener Listener for receiving results or errors (required for LIVE_STREAM).
+ */
 class ObjectDetectorHelper(
     var threshold: Float = THRESHOLD_DEFAULT,
     var maxResults: Int = MAX_RESULTS_DEFAULT,
@@ -62,10 +79,12 @@ class ObjectDetectorHelper(
         objectDetector = null
     }
 
-    // Initialize the object detector using current settings on the
-    // thread that is using it. CPU can be used with detectors
-    // that are created on the main thread and used on a background thread, but
-    // the GPU delegate needs to be used on the thread that initialized the detector
+    /**
+     * Initialize the object detector using current settings on the
+     * thread that is using it. CPU can be used with detectors
+     * that are created on the main thread and used on a background thread, but
+     * the GPU delegate needs to be used on the thread that initialized the detector.
+     */
     fun setupObjectDetector() {
         // Set general detection options, including number of used threads
         val baseOptionsBuilder = BaseOptions.builder()
@@ -149,9 +168,14 @@ class ObjectDetectorHelper(
         return objectDetector == null
     }
 
-    // Accepts the URI for a video file loaded from the user's gallery and attempts to run
-    // object detection inference on the video. This process will evaluate every frame in
-    // the video and attach the results to a bundle that will be returned.
+    /**
+     * Accepts the URI for a video file loaded from the user's gallery and attempts to run
+     * object detection inference on the video. This process will evaluate every frame in
+     * the video and attach the results to a bundle that will be returned.
+     *
+     * @param videoUri The URI of the video file to process.
+     * @param inferenceIntervalMs The interval between frames to process (in milliseconds).
+     */
     fun detectVideoFile(
         videoUri: Uri, inferenceIntervalMs: Long
     ): ResultBundle? {
@@ -236,8 +260,12 @@ class ObjectDetectorHelper(
         }
     }
 
-    // Runs object detection on live streaming cameras frame-by-frame and returns the results
-    // asynchronously to the caller.
+    /**
+     * Runs object detection on live streaming cameras frame-by-frame and returns the results
+     * asynchronously to the caller.
+     *
+     * @param imageProxy The image from CameraX analysis.
+     */
     fun detectLivestreamFrame(imageProxy: ImageProxy) {
         if (runningMode != RunningMode.LIVE_STREAM) {
             throw IllegalArgumentException(
@@ -348,8 +376,12 @@ class ObjectDetectorHelper(
         )
     }
 
-    // Accepted a Bitmap and runs object detection inference on it to return results back
-    // to the caller
+    /**
+     * Accepted a Bitmap and runs object detection inference on it to return results back
+     * to the caller.
+     *
+     * @param image The input bitmap to detect objects in.
+     */
     fun detectImage(image: Bitmap): ResultBundle? {
 
         if (runningMode != RunningMode.IMAGE) {
@@ -383,8 +415,10 @@ class ObjectDetectorHelper(
         return null
     }
 
-    // Wraps results from inference, the time it takes for inference to be performed, and
-    // the input image and height for properly scaling UI to return back to callers
+    /**
+     * Wraps results from inference, the time it takes for inference to be performed, and
+     * the input image and height for properly scaling UI to return back to callers.
+     */
     data class ResultBundle(
         val results: List<ObjectDetectorResult>,
         val inferenceTime: Long,

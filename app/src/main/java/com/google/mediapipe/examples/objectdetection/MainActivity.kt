@@ -26,6 +26,11 @@ import com.google.mediapipe.examples.objectdetection.databinding.ActivityMainBin
 /**
  * Main entry point into our app. This app follows the single-activity pattern, and all
  * functionality is implemented in the form of fragments.
+ *
+ * It hosts the [NavHostFragment] which manages navigation between:
+ * - [PermissionsFragment]
+ * - [CameraFragment]
+ * - [GalleryFragment]
  */
 class MainActivity : AppCompatActivity() {
 

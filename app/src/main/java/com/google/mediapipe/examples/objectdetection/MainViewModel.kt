@@ -19,6 +19,10 @@ import androidx.lifecycle.ViewModel
 
 /**
  *  This ViewModel is used to store object detector helper settings
+ *  such as the model type, delegate (CPU/GPU), threshold, and max results.
+ *
+ *  It survives configuration changes (rotation) and allows sharing state
+ *  between fragments.
  */
 class MainViewModel : ViewModel() {
     private var _delegate: Int = ObjectDetectorHelper.DELEGATE_CPU

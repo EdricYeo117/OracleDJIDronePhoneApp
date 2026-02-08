@@ -4,6 +4,9 @@ import android.graphics.Bitmap
 import android.graphics.Matrix
 import androidx.camera.core.ImageProxy
 
+/**
+ * Utilities for working with CameraX ImageProxy objects.
+ */
 object ImageProxyUtils {
     fun toBitmap(imageProxy: ImageProxy, mirror: Boolean): Bitmap {
         // NOTE: Your project already uses OUTPUT_IMAGE_FORMAT_RGBA_8888 in analyzers,

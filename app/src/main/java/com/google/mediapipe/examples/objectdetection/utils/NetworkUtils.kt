@@ -4,6 +4,9 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 
+/**
+ * Helper utilities for retrieving network information (IP address, Transport type).
+ */
 object NetworkUtils {
 
     // Returns the IPv4 of the currently active transport (Wi-Fi/cellular), if available

@@ -199,32 +199,75 @@ To use your own TFLite models:
 
 ---
 
-## Project Structure
+## Project Structure & File Descriptions
 
-```
-OracleDJIDronePhoneApp/
-├── app/
-│   ├── src/
-│   │   ├── main/
-│   │   │   ├── java/com/google/mediapipe/examples/objectdetection/
-│   │   │   │   ├── fragments/
-│   │   │   │   │   ├── CameraFragment.kt        # Live camera UI
-│   │   │   │   │   ├── GalleryFragment.kt       # Gallery UI
-│   │   │   │   │   └── PermissionsFragment.kt   # Permission handling
-│   │   │   │   ├── MainActivity.kt               # Main entry point
-│   │   │   │   ├── MainViewModel.kt              # Shared state management
-│   │   │   │   ├── MotionGate.kt                 # Background subtraction
-│   │   │   │   ├── ObjectDetectorHelper.kt       # MediaPipe wrapper
-│   │   │   │   └── OverlayView.kt                # Detection visualization
-│   │   │   ├── res/                              # UI resources
-│   │   │   └── assets/                           # TFLite models
-│   │   └── androidTest/                          # Instrumented tests
-│   ├── build.gradle                              # App-level dependencies
-│   └── download_models.gradle                    # Model download script
-├── build.gradle                                  # Project-level config
-├── settings.gradle
-└── README.md
-```
+### Application Entry Points
+
+- **`MainActivity.kt`**: The single-activity entry point for the application. It sets up the navigation host and handles top-level UI binding.
+- **`MainViewModel.kt`**: A shared ViewModel that persists object detection settings (threshold, max results, delegate type, model type) across configuration changes and fragments.
+
+### Fragments (UI & Logic)
+
+- **`CameraFragment.kt`**: The core screen for live object detection.
+  - Manages CameraX preview and image analysis use cases.
+  - Integrates `MotionGate` for background subtraction.
+  - Handles the "Intruder" confirmation logic using `personFilter`, `poseFilter`, and `PoseLandmarkerHelper`.
+  - Updates the overlay and status indicators in real-time.
+- **`GalleryFragment.kt`**: Allows users to run object detection on static images or video files from their device storage.
+- **`PermissionsFragment.kt`**: Handles runtime camera permission requests before navigating to the camera screen.
+
+### Core Detection Logic
+
+- **`ObjectDetectorHelper.kt`**: A wrapper around MediaPipe's `ObjectDetector`.
+  - Handles initialization of the TFLite model.
+  - Provides methods for live stream, image, and video inference.
+  - Manages hardware delegates (CPU/GPU).
+- **`PoseLandmarkerHelper.kt`**: A wrapper around MediaPipe's `PoseLandmarker`.
+  - Used for secondary verification of "person" detections to reduce false positives.
+  - Detects 33 body landmarks on a timestamped image.
+- **`IntruderApiClient.kt`**: A Retrofit-style HTTP client (using OkHttp) for sending "Intruder Alert" events to a remote server.
+- **`MotionGate.kt`**: Custom motion detection logic.
+  - Uses an Exponential Moving Average (EMA) to model the background.
+  - Compares the current frame against the background to detect changes.
+  - Filters out global lighting changes and noise to trigger detection only on significant motion.
+
+### Utilities
+
+- **`OverlayView.kt`**: A custom `View` that draws bounding boxes, classification labels, and pose skeletons on top of the camera preview.
+- **`YuvToRgbConverter.kt`**: Uses RenderScript to efficiently convert YUV_420_888 camera buffers to ARGB_8888 Bitmaps for processing.
+- **`BooleanWindowFilter.kt`**: A sliding window utility that returns `true` only if a condition is met `minHits` times within the last `windowSize` frames. Used for temporal consistency.
+- **`NetworkUtils.kt`**: Helper functions to retrieve the device's IP address and active network transport type (WiFi/Cellular).
+- **`AppPrefs.kt`**: Simple `SharedPreferences` wrapper for persisting toggle states (e.g., "Increased Accuracy" mode).
+- **`ImageProxyUtils.kt`**: Helpers for converting CameraX `ImageProxy` objects to `Bitmap`s, handling rotation and mirroring.
+
+---
+
+## Detailed Component Documentation
+
+### Intruder Detection API (`IntruderApiClient`)
+
+The app can send JSON events to a remote server when a person is confirmed.
+
+- **Endpoint**: `POST /v1/intrusion/events`
+- **Payload**:
+  ```json
+  {
+    "event_type": "PERSON_DETECTED",
+    "timestamp_ms": 1707423984000,
+    "device_id": "android-phone-01",
+    "score": 0.92
+  }
+  ```
+
+### Motion Gate Logic (`MotionGate`)
+
+To save power and reduce false positives, the heavy object detection model is only triggered when "motion" is detected.
+
+1. **Downsampling**: Frames are downsampled (default 6x) to speed up pixel comparison.
+2. **EMA Background**: `bg[i] = bg[i] + alpha * (current[i] - bg[i])`. This constantly adapts to slow lighting changes.
+3. **Diff Threshold**: Pixels differing by more than `diffThreshold` (default 28) are marked as "changed".
+4. **Global Change Rejection**: If >60% of pixels change at once (e.g., turning on a light), it is ignored as a global shift.
+5. **Trigger**: If the ratio of changed pixels exceeds `ratioThreshold` (3%) for `minConsecutive` frames (3), motion is flagged.
 
 ---
 
@@ -309,28 +352,6 @@ For issues, questions, or feature requests:
 
 - **GitHub Issues**: [Report a bug](https://github.com/EdricYeo117/OracleDJIDronePhoneApp/issues)
 - **Documentation**: [Wiki](https://github.com/EdricYeo117/OracleDJIDronePhoneApp/wiki)
-
----
-
-## Roadmap
-
-### Q1 2026
-
-- ✅ Background subtraction implementation
-- 🚧 REST API development
-- 📅 DJI SDK integration
-
-### Q2 2026
-
-- 📅 Cloud storage integration
-- 📅 Multi-device orchestration
-- 📅 Advanced object tracking
-
-### Future
-
-- 📅 AI-powered anomaly detection
-- 📅 Edge computing optimization
-- 📅 Autonomous patrol patterns
 
 ---
 

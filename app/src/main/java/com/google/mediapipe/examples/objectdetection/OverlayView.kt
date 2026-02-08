@@ -28,6 +28,15 @@ import com.google.mediapipe.tasks.vision.poselandmarker.PoseLandmarkerResult
 import kotlin.math.max
 import kotlin.math.min
 
+/**
+ * A custom view that renders:
+ * 1. Bounding boxes for detected objects.
+ * 2. Classification labels and confidence scores.
+ * 3. Pose landmarks (skeletons) if enabled.
+ * 4. Motion masks (for debugging background subtraction).
+ *
+ * It handles coordinate mapping from the image space (normalized or pixel) to the view space.
+ */
 class OverlayView(context: Context?, attrs: AttributeSet?) : View(context, attrs) {
 
     // Object detection
@@ -86,6 +95,15 @@ class OverlayView(context: Context?, attrs: AttributeSet?) : View(context, attrs
         this.runningMode = runningMode
     }
 
+    /**
+     * Updates the object detection results to be drawn.
+     * Triggers an invalidate() to redraw the view.
+     *
+     * @param detectionResults The raw results from MediaPipe ObjectDetector.
+     * @param outputHeight The height of the input image.
+     * @param outputWidth The width of the input image.
+     * @param imageRotation The rotation applied to the input image.
+     */
     fun setResults(
         detectionResults: ObjectDetectorResult,
         outputHeight: Int,

@@ -9,6 +9,12 @@ import okhttp3.Response
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 
+/**
+ * Client for sending intruder detection events to a remote server.
+ *
+ * @property baseUrl The base URL of the remote server (e.g. "http://192.168.0.5:8080").
+ * @property apiKey Optional API key for authentication.
+ */
 class IntruderApiClient(
     private val baseUrl: String,   // e.g. "http://192.168.0.5:8080"
     private val apiKey: String? = null
@@ -26,6 +32,10 @@ class IntruderApiClient(
 
     private val jsonType = "application/json; charset=utf-8".toMediaType()
 
+    /**
+     * Masks the API key for logging purposes.
+     * Shows only the first 2-4 characters and the last 2-4 characters.
+     */
     private fun mask(k: String?): String {
         val s = k?.trim()
         if (s.isNullOrEmpty()) return "None"
@@ -34,6 +44,12 @@ class IntruderApiClient(
         else "${s.take(4)}***${s.takeLast(4)}(len=$n)"
     }
 
+    /**
+     * Sends a JSON payload to the /v1/intrusion/events endpoint.
+     * This is fire-and-forget; failures are logged but do not crash the app.
+     *
+     * @param jsonBody The full JSON string to send as the request body.
+     */
     fun sendIntruderEvent(jsonBody: String) {
         val safeBase = baseUrl.trim().trimEnd('/')
         val url = "$safeBase/v1/intrusion/events"
