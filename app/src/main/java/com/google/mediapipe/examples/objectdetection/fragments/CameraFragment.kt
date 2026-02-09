@@ -58,6 +58,7 @@ import com.google.mediapipe.examples.objectdetection.utils.NetworkUtils
 import android.graphics.Bitmap
 import androidx.camera.core.ImageProxy
 import com.google.mediapipe.tasks.vision.poselandmarker.PoseLandmarkerResult
+import java.util.Locale
 
 /**
  * The core fragment for the live camera feed.
@@ -72,12 +73,16 @@ import com.google.mediapipe.tasks.vision.poselandmarker.PoseLandmarkerResult
  */
 class CameraFragment : Fragment(), ObjectDetectorHelper.DetectorListener {
 
-    private val intruderClient by lazy {
-        IntruderApiClient(
-            baseUrl = getString(R.string.red_base_url),
-            apiKey = getString(R.string.red_api_key).trim()
-        )
+    private fun intruderClient(): IntruderApiClient {
+        val ctx = requireContext().applicationContext
+        val baseUrl = AppPrefs.getRedBaseUrl(ctx)
+        val apiKey = AppPrefs.getRedApiKey(ctx).trim()
+
+        Log.i(TAG_CLIENT, "IntruderApiClient baseUrl=${baseUrl.trim().trimEnd('/')} apiKey=${maskKey(apiKey)}")
+
+        return IntruderApiClient(baseUrl = baseUrl, apiKey = apiKey)
     }
+
     private var netCallback: ConnectivityManager.NetworkCallback? = null
     private var lastPingMs = 0L
     var lastMotionActive: Boolean = false
@@ -100,6 +105,7 @@ class CameraFragment : Fragment(), ObjectDetectorHelper.DetectorListener {
     private var cameraProvider: ProcessCameraProvider? = null
     /** Blocking ML operations are performed using this executor */
     private lateinit var backgroundExecutor: ExecutorService
+    private lateinit var intruderExecutor: ExecutorService
 
     private lateinit var increasedAccuracySwitch: com.google.android.material.switchmaterial.SwitchMaterial
 
@@ -112,6 +118,16 @@ class CameraFragment : Fragment(), ObjectDetectorHelper.DetectorListener {
     private var lastPoseRunMs: Long = 0L
     private val poseMinIntervalMs = 250L // 4 Hz
     @Volatile private var latestPoseRotationDegrees: Int = 0
+
+    // --- Intruder anti-spam state ---
+    private var intruderPresent = false
+    private var lastSeenMs = 0L
+    private var lastEnterPingMs = 0L
+    private var lastHeartbeatMs = 0L
+
+    private val exitGraceMs = 1200L          // must be gone this long to reset
+    private val enterCooldownMs = 4000L      // min time between ENTER pings
+    private val heartbeatEveryMs = 15000L    // optional; set to 0 to disable
 
     @Volatile private var latestPoseBitmap: android.graphics.Bitmap? = null
     @Volatile private var latestPoseTimestampMs: Long = 0L
@@ -165,6 +181,8 @@ class CameraFragment : Fragment(), ObjectDetectorHelper.DetectorListener {
 
         backgroundExecutor.shutdown()
         backgroundExecutor.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS)
+        intruderExecutor.shutdown()
+        intruderExecutor.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS)
     }
 
     override fun onCreateView(
@@ -180,7 +198,8 @@ class CameraFragment : Fragment(), ObjectDetectorHelper.DetectorListener {
 
     private fun refreshNetworkLabels() {
         if (_fragmentCameraBinding == null) return
-        fragmentCameraBinding.tvRedIp.text = "RED: ${getString(R.string.red_base_url)}"
+        val ctx = requireContext().applicationContext
+        fragmentCameraBinding.tvRedIp.text = "RED: ${AppPrefs.getRedBaseUrl(ctx)}"
 
         val ip = NetworkUtils.getPhoneIpv4(requireContext()) ?: "N/A"
         val transport = NetworkUtils.getActiveTransport(requireContext())
@@ -237,14 +256,13 @@ class CameraFragment : Fragment(), ObjectDetectorHelper.DetectorListener {
         }
 
         // ... keep the rest of your code the same ...
-        fragmentCameraBinding.tvRedIp.text = "RED: ${getString(R.string.red_base_url)}"
         val phoneIp = NetworkUtils.getPhoneIpv4(requireContext()) ?: "N/A"
-        fragmentCameraBinding.tvPhoneIp.text = "Phone IP (WiFi): $phoneIp"
 
         fragmentCameraBinding.tvStatus.text = getString(R.string.status_idle)
         fragmentCameraBinding.tvStatus.setBackgroundResource(R.drawable.bg_oracle_badge_outline)
 
         backgroundExecutor = Executors.newSingleThreadExecutor()
+        intruderExecutor = Executors.newSingleThreadExecutor()
 
         backgroundExecutor.execute {
             objectDetectorHelper =
@@ -306,8 +324,7 @@ class CameraFragment : Fragment(), ObjectDetectorHelper.DetectorListener {
             }
         }
 
-        // When clicked, change the underlying hardware used for inference. Current options are CPU
-        // GPU, and NNAPI
+        // When clicked, change the underlying hardware used for inference.
         fragmentCameraBinding.bottomSheetLayout.spinnerDelegate.setSelection(
             viewModel.currentDelegate,
             false
@@ -323,7 +340,7 @@ class CameraFragment : Fragment(), ObjectDetectorHelper.DetectorListener {
                     try {
                         objectDetectorHelper.currentDelegate = p2
                         updateControlsUi()
-                    } catch(e: UninitializedPropertyAccessException) {
+                    } catch (e: UninitializedPropertyAccessException) {
                         Log.e(TAG, "ObjectDetectorHelper has not been initialized yet.")
                     }
                 }
@@ -349,7 +366,7 @@ class CameraFragment : Fragment(), ObjectDetectorHelper.DetectorListener {
                     try {
                         objectDetectorHelper.currentModel = p2
                         updateControlsUi()
-                    } catch(e: UninitializedPropertyAccessException) {
+                    } catch (e: UninitializedPropertyAccessException) {
                         Log.e(TAG, "ObjectDetectorHelper has not been initialized yet.")
                     }
                 }
@@ -358,6 +375,36 @@ class CameraFragment : Fragment(), ObjectDetectorHelper.DetectorListener {
                     /* no op */
                 }
             }
+
+        // =========================
+// API SETTINGS (Host + Port + API Key)
+// =========================
+        val ctx = requireContext().applicationContext
+
+        // Pre-fill with effective values
+        fragmentCameraBinding.bottomSheetLayout.etRedHost.setText(AppPrefs.getRedHost(ctx))
+        fragmentCameraBinding.bottomSheetLayout.etRedPort.setText(AppPrefs.getRedPort(ctx).toString())
+        fragmentCameraBinding.bottomSheetLayout.etRedApiKey.setText(AppPrefs.getRedApiKey(ctx))
+
+        fragmentCameraBinding.bottomSheetLayout.btnSaveApi.setOnClickListener {
+            AppPrefs.setRedHost(ctx, fragmentCameraBinding.bottomSheetLayout.etRedHost.text?.toString().orEmpty())
+            AppPrefs.setRedPort(ctx, fragmentCameraBinding.bottomSheetLayout.etRedPort.text?.toString().orEmpty())
+            AppPrefs.setRedApiKey(ctx, fragmentCameraBinding.bottomSheetLayout.etRedApiKey.text?.toString().orEmpty())
+
+            Toast.makeText(requireContext(), "Saved", Toast.LENGTH_SHORT).show()
+            refreshNetworkLabels()
+        }
+
+        fragmentCameraBinding.bottomSheetLayout.btnResetApi.setOnClickListener {
+            AppPrefs.clearRedOverrides(ctx)
+
+            fragmentCameraBinding.bottomSheetLayout.etRedHost.setText(AppPrefs.getRedHost(ctx))
+            fragmentCameraBinding.bottomSheetLayout.etRedPort.setText(AppPrefs.getRedPort(ctx).toString())
+            fragmentCameraBinding.bottomSheetLayout.etRedApiKey.setText(AppPrefs.getRedApiKey(ctx))
+
+            Toast.makeText(requireContext(), "Reset to defaults", Toast.LENGTH_SHORT).show()
+            refreshNetworkLabels()
+        }
     }
 
     // Update the values displayed in the bottom sheet. Reset detector.
@@ -506,7 +553,7 @@ class CameraFragment : Fragment(), ObjectDetectorHelper.DetectorListener {
      *
      * @param resultBundle The detection results including inference time and image dimensions.
      */
-    override fun onResults(resultBundle: ObjectDetectorHelper.ResultBundle) {
+   override fun onResults(resultBundle: ObjectDetectorHelper.ResultBundle) {
         if (_fragmentCameraBinding == null) return
 
         val detectionResult = resultBundle.results[0]
@@ -521,7 +568,8 @@ class CameraFragment : Fragment(), ObjectDetectorHelper.DetectorListener {
             }
         }
 
-        val personThisFrame = bestPersonScore >= 0.80f
+        val gate = viewModel.currentThreshold  // or objectDetectorHelper.threshold if you prefer
+        val personThisFrame = bestPersonScore >= gate
         val personPersistent = personFilter.update(personThisFrame)
         val motionActive = lastMotionActive
 
@@ -546,7 +594,7 @@ class CameraFragment : Fragment(), ObjectDetectorHelper.DetectorListener {
 
             fragmentCameraBinding.overlay.setPersonActive(personThisFrame)
 
-            // pass the original result (no proto conversion)
+            // Keep it simple: Overlay filters to "person" inside OverlayView draw loop
             fragmentCameraBinding.overlay.setResults(
                 detectionResult,
                 resultBundle.inputImageHeight,
@@ -556,31 +604,31 @@ class CameraFragment : Fragment(), ObjectDetectorHelper.DetectorListener {
         }
 
         // ===== Intruder confirmation pipeline (background thread) =====
-        backgroundExecutor.execute {
-            val poseEnabled = AppPrefs.isPoseVerificationEnabled(requireContext())
+        intruderExecutor.execute {
+            val ctx = context?.applicationContext ?: return@execute
+            val poseEnabled = AppPrefs.isPoseVerificationEnabled(ctx)
 
-            // Must be persistent person
+            Log.d(
+                TAG_PING,
+                "pipeline best=%.3f personThis=%s personPersist=%s poseEnabled=%s"
+                    .format(Locale.US, bestPersonScore, personThisFrame, personPersistent, poseEnabled)
+            )
+
             if (!personPersistent) {
                 poseFilter.reset()
+                onNoIntruder()
                 return@execute
             }
 
-            // Must still be in motion state
-            if (!lastMotionActive) {
-                poseFilter.reset()
-                return@execute
-            }
-
-            // If pose verification disabled, confirm immediately
             if (!poseEnabled) {
-                pingIntruder(bestPersonScore)
+                onIntruderConfirmed(bestPersonScore)
                 return@execute
             }
 
-            // Pose verification path
+            // Pose rate limit
             val nowMs = android.os.SystemClock.uptimeMillis()
             if ((nowMs - lastPoseRunMs) < poseMinIntervalMs) {
-                // Don’t penalize if we skipped pose due to rate limiting
+                // don't change poseFilter / don't call onNoIntruder() here; just skip this tick
                 return@execute
             }
 
@@ -599,64 +647,106 @@ class CameraFragment : Fragment(), ObjectDetectorHelper.DetectorListener {
 
             lastPoseRunMs = nowMs
 
-            // Draw skeleton. Since pose ran on UPRIGHT bitmap, rotation must be 0.
-            activity?.runOnUiThread {
-                if (_fragmentCameraBinding == null) return@runOnUiThread
-
-                val w = bmpUpright.width
-                val h = bmpUpright.height
-
-                fragmentCameraBinding.overlay.setPoseResults(
-                    poseResult,
-                    h,
-                    w,
-                    0
-                )
-            }
-
-// --- Draw skeleton for visibility (any pose landmarks) ---
+            // --- 1) ALWAYS draw pose skeleton if we have any landmarks (for visibility) ---
             val hasAnyPoseForDisplay = poseResult != null && poseResult.landmarks().isNotEmpty()
-
             activity?.runOnUiThread {
                 if (_fragmentCameraBinding == null) return@runOnUiThread
-
-                // IMPORTANT: pose ran on bmpUpright, so use its dimensions and rotation=0
                 fragmentCameraBinding.overlay.setPoseResults(
                     if (hasAnyPoseForDisplay) poseResult else null,
                     bmpUpright.height,
                     bmpUpright.width,
-                    0
+                    0 // pose was run on upright bitmap
                 )
             }
 
-// --- Gate intruder confirmation using full-body check ---
+            // --- 2) Use full-body gate ONLY for ping confirmation ---
             val passesFullBodyGate = isLikelyFullBodyPose(poseResult)
-
-// Use the full-body gate for temporal filtering (prevents flicker-trigger pings)
             val posePersistent = poseFilter.update(passesFullBodyGate)
 
             if (posePersistent) {
-                pingIntruder(bestPersonScore)
+                onIntruderConfirmed(bestPersonScore) // <-- anti-spam enter/cooldown
+            } else {
+                onNoIntruder() // <-- allow exit after grace
             }
         }
     }
 
-    private fun pingIntruder(bestPersonScore: Float) {
+    private fun maskKey(k: String?): String {
+        val s = k?.trim()
+        if (s.isNullOrEmpty()) return "None"
+        val n = s.length
+        return if (n <= 8) "${s.take(2)}***${s.takeLast(2)}(len=$n)"
+        else "${s.take(4)}***${s.takeLast(4)}(len=$n)"
+    }
+    private fun sendIntruderPing(score: Float, eventType: String) {
         val now = System.currentTimeMillis()
-        if (now - lastPingMs < pingCooldownMs) return
-        lastPingMs = now
-
         val json = """
         {
-          "event_type": "PERSON_DETECTED",
+          "event_type": "$eventType",
           "timestamp_ms": $now,
           "device_id": "android-phone-01",
-          "score": $bestPersonScore
+          "score": $score
         }
     """.trimIndent()
 
-        Log.d(TAG, "Intruder confirmed -> pinging server: $json")
-        intruderClient.sendIntruderEvent(json)
+        val ctx = context?.applicationContext
+        if (ctx == null) {
+            Log.w(TAG_PING, "skip ping: fragment not attached (context=null)")
+            return
+        }
+
+        val baseUrl = AppPrefs.getRedBaseUrl(ctx).trim().trimEnd('/')
+        val apiKey = AppPrefs.getRedApiKey(ctx).trim()
+
+        Log.d(
+            TAG_PING,
+            "sendIntruderPing eventType=$eventType score=${String.format(Locale.US, "%.3f", score)} ts=$now baseUrl=$baseUrl apiKey=${maskKey(apiKey)}"
+        )
+        Log.v(TAG_PING, "payload=$json")
+
+        intruderClient().sendIntruderEvent(json)
+    }
+
+    private fun onIntruderConfirmed(bestPersonScore: Float) {
+        val now = System.currentTimeMillis()
+        lastSeenMs = now
+
+        Log.d(
+            TAG_PING,
+            "onIntruderConfirmed score=%.3f intruderPresent=%s dtSinceEnter=%dms"
+                .format(Locale.US, bestPersonScore, intruderPresent, (now - lastEnterPingMs))
+        )
+
+        if (!intruderPresent) {
+            if (now - lastEnterPingMs < enterCooldownMs) {
+                Log.d(TAG_PING, "ENTER blocked by cooldown enterCooldownMs=$enterCooldownMs")
+                return
+            }
+
+            intruderPresent = true
+            lastEnterPingMs = now
+            Log.i(TAG_PING, "ENTER -> sending PERSON_DETECTED")
+            sendIntruderPing(bestPersonScore, eventType = "PERSON_DETECTED")
+            return
+        }
+
+        if (heartbeatEveryMs > 0 && (now - lastHeartbeatMs) >= heartbeatEveryMs) {
+            lastHeartbeatMs = now
+            Log.i(TAG_PING, "HEARTBEAT -> sending PERSON_STILL_PRESENT")
+            sendIntruderPing(bestPersonScore, eventType = "PERSON_STILL_PRESENT")
+        } else {
+            Log.d(TAG_PING, "No heartbeat sent (heartbeatEveryMs=$heartbeatEveryMs)")
+        }
+    }
+
+    private fun onNoIntruder() {
+        val now = System.currentTimeMillis()
+
+        if (intruderPresent && (now - lastSeenMs) >= exitGraceMs) {
+            intruderPresent = false
+            // Optional exit ping:
+            // sendIntruderPing(0f, eventType = "PERSON_LEFT")
+        }
     }
 
     override fun onError(error: String, errorCode: Int) {
@@ -678,14 +768,21 @@ class CameraFragment : Fragment(), ObjectDetectorHelper.DetectorListener {
         val lm = people[0]
         if (lm.size < 25) return false
 
-        fun ok(i: Int): Boolean {
+        fun vp(i: Int): Pair<Float, Float> {
             val v = lm[i].visibility().orElse(1f)
             val p = lm[i].presence().orElse(1f)
-            return v >= 0.5f && p >= 0.5f
+            return v to p
         }
 
-        val shouldersOk = ok(11) && ok(12)
-        val hipsOk = ok(23) && ok(24)
+        val (v11, p11) = vp(11)
+        val (v12, p12) = vp(12)
+        val (v23, p23) = vp(23)
+        val (v24, p24) = vp(24)
+
+        Log.d(TAG_PING, "pose gate v/p: LSh=($v11,$p11) RSh=($v12,$p12) LHip=($v23,$p23) RHip=($v24,$p24)")
+
+        val shouldersOk = v11 >= 0.5f && p11 >= 0.5f && v12 >= 0.5f && p12 >= 0.5f
+        val hipsOk = v23 >= 0.5f && p23 >= 0.5f && v24 >= 0.5f && p24 >= 0.5f
         return shouldersOk && hipsOk
     }
 
@@ -716,4 +813,9 @@ class CameraFragment : Fragment(), ObjectDetectorHelper.DetectorListener {
         bitmap.copyPixelsFromBuffer(compact)
         return bitmap
     }
+    companion object {
+        private const val TAG_CLIENT = "IntruderClientInit"
+        private const val TAG_PING = "IntruderPing"
+    }
+
 }

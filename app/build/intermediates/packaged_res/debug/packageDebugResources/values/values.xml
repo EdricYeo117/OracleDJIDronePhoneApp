@@ -55,8 +55,10 @@
     <string name="oracle_app_title">Oracle Secure Vision</string>
     <string name="phone_ip_placeholder">Phone IP: -</string>
     <string name="red_api_key">edricyeo117</string>
-    <string name="red_base_url">http://192.168.0.5:8080</string>
+    <string name="red_host">192.168.1.46</string>
     <string name="red_ip_placeholder">RED: -</string>
+    <string name="red_port">8080</string>
+    <string name="red_scheme">http</string>
     <string name="status_idle">IDLE</string>
     <string name="status_motion">ACTIVE: MOTION</string>
     <string name="status_person">ACTIVE: PERSON</string>

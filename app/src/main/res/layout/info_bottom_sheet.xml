@@ -44,6 +44,58 @@
                 android:src="@drawable/icn_chevron_up"
                 android:contentDescription="@string/alt_bottom_sheet_chevron" />
         </RelativeLayout>
+        <!-- API Settings: Host + Port + API Key -->
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="RED Host / IP">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etRedHost"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="text"
+                android:singleLine="true" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="RED Port">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etRedPort"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="number"
+                android:singleLine="true" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="RED API Key">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etRedApiKey"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="textPassword"
+                android:singleLine="true" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <Button
+            android:id="@+id/btnSaveApi"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Save API Settings" />
+
+        <Button
+            android:id="@+id/btnResetApi"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Reset to Defaults" />
 
         <!-- Inference time row -->
         <androidx.appcompat.widget.LinearLayoutCompat
@@ -68,6 +120,7 @@
                 android:layout_centerVertical="true"
                 android:textColor="@color/bottom_sheet_text_color"
                 android:textSize="@dimen/bottom_sheet_text_size" />
+
         </androidx.appcompat.widget.LinearLayoutCompat>
 
         <!-- ML confidence threshold adjustment row -->

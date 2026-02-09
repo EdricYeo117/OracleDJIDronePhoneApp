@@ -3186,6 +3186,8 @@ id blocking
 id bottom
 id bottom_sheet_layout
 id bounce
+id btnResetApi
+id btnSaveApi
 id buttonPanel
 id cache_measures
 id camera_container
@@ -3263,6 +3265,9 @@ id endToStart
 id enterAlways
 id enterAlwaysCollapsed
 id escape
+id etRedApiKey
+id etRedHost
+id etRedPort
 id exitUntilCollapsed
 id expand_activities_button
 id expanded_menu
@@ -3985,8 +3990,10 @@ string path_password_eye_mask_visible
 string path_password_strike_through
 string phone_ip_placeholder
 string red_api_key
-string red_base_url
+string red_host
 string red_ip_placeholder
+string red_port
+string red_scheme
 string search_menu_title
 string searchbar_scrolling_view_behavior
 string searchview_clear_text_content_description

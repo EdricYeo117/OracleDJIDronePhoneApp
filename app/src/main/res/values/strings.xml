@@ -40,8 +40,10 @@
         to begin running the object detection.</string>
 
     <!-- Strings for API -->
-    <string name="red_base_url">http://192.168.0.5:8080</string>
+    <string name="red_host">192.168.1.46</string>
     <string name="red_api_key">edricyeo117</string>
+    <string name="red_port">8080</string>
+    <string name="red_scheme">http</string>
 
     <string name="oracle_app_title">Oracle Secure Vision</string>
 

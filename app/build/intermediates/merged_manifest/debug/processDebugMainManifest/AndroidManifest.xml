@@ -53,7 +53,8 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:taskAffinity=""
         android:testOnly="true"
-        android:theme="@style/Theme.ObjectDetection" >
+        android:theme="@style/Theme.ObjectDetection"
+        android:usesCleartextTraffic="true" >
         <activity
             android:name="com.google.mediapipe.examples.objectdetection.MainActivity"
             android:clearTaskOnLaunch="true"

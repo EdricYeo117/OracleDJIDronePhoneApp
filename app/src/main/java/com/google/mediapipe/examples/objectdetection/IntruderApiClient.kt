@@ -20,7 +20,7 @@ class IntruderApiClient(
     private val apiKey: String? = null
 ) {
     private val client = OkHttpClient.Builder()
-        .connectTimeout(3, TimeUnit.SECONDS)
+        .connectTimeout(10, TimeUnit.SECONDS)
         .writeTimeout(3, TimeUnit.SECONDS)
         .readTimeout(5, TimeUnit.SECONDS)
         .build()

@@ -43,10 +43,15 @@ drawable media_pipe_banner
 id action_camera_to_permissions
 id action_permissions_to_camera
 id bottom_sheet_layout
+id btnResetApi
+id btnSaveApi
 id camera_container
 id camera_fragment
 id content_container
 id divider
+id etRedApiKey
+id etRedHost
+id etRedPort
 id fabGetContent
 id fragment_container
 id gallery_fragment
@@ -101,8 +106,10 @@ string menu_gallery
 string oracle_app_title
 string phone_ip_placeholder
 string red_api_key
-string red_base_url
+string red_host
 string red_ip_placeholder
+string red_port
+string red_scheme
 string status_idle
 string status_motion
 string status_person

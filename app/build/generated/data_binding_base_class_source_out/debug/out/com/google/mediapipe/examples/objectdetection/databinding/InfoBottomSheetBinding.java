@@ -4,6 +4,7 @@ package com.google.mediapipe.examples.objectdetection.databinding;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -12,6 +13,7 @@ import androidx.appcompat.widget.AppCompatSpinner;
 import androidx.core.widget.NestedScrollView;
 import androidx.viewbinding.ViewBinding;
 import androidx.viewbinding.ViewBindings;
+import com.google.android.material.textfield.TextInputEditText;
 import com.google.mediapipe.examples.objectdetection.R;
 import java.lang.NullPointerException;
 import java.lang.Override;
@@ -23,6 +25,21 @@ public final class InfoBottomSheetBinding implements ViewBinding {
 
   @NonNull
   public final NestedScrollView bottomSheetLayout;
+
+  @NonNull
+  public final Button btnResetApi;
+
+  @NonNull
+  public final Button btnSaveApi;
+
+  @NonNull
+  public final TextInputEditText etRedApiKey;
+
+  @NonNull
+  public final TextInputEditText etRedHost;
+
+  @NonNull
+  public final TextInputEditText etRedPort;
 
   @NonNull
   public final TextView inferenceTimeLabel;
@@ -55,14 +72,21 @@ public final class InfoBottomSheetBinding implements ViewBinding {
   public final TextView thresholdValue;
 
   private InfoBottomSheetBinding(@NonNull NestedScrollView rootView,
-      @NonNull NestedScrollView bottomSheetLayout, @NonNull TextView inferenceTimeLabel,
-      @NonNull TextView inferenceTimeVal, @NonNull AppCompatImageButton maxResultsMinus,
-      @NonNull AppCompatImageButton maxResultsPlus, @NonNull TextView maxResultsValue,
-      @NonNull AppCompatSpinner spinnerDelegate, @NonNull AppCompatSpinner spinnerModel,
-      @NonNull AppCompatImageButton thresholdMinus, @NonNull AppCompatImageButton thresholdPlus,
-      @NonNull TextView thresholdValue) {
+      @NonNull NestedScrollView bottomSheetLayout, @NonNull Button btnResetApi,
+      @NonNull Button btnSaveApi, @NonNull TextInputEditText etRedApiKey,
+      @NonNull TextInputEditText etRedHost, @NonNull TextInputEditText etRedPort,
+      @NonNull TextView inferenceTimeLabel, @NonNull TextView inferenceTimeVal,
+      @NonNull AppCompatImageButton maxResultsMinus, @NonNull AppCompatImageButton maxResultsPlus,
+      @NonNull TextView maxResultsValue, @NonNull AppCompatSpinner spinnerDelegate,
+      @NonNull AppCompatSpinner spinnerModel, @NonNull AppCompatImageButton thresholdMinus,
+      @NonNull AppCompatImageButton thresholdPlus, @NonNull TextView thresholdValue) {
     this.rootView = rootView;
     this.bottomSheetLayout = bottomSheetLayout;
+    this.btnResetApi = btnResetApi;
+    this.btnSaveApi = btnSaveApi;
+    this.etRedApiKey = etRedApiKey;
+    this.etRedHost = etRedHost;
+    this.etRedPort = etRedPort;
     this.inferenceTimeLabel = inferenceTimeLabel;
     this.inferenceTimeVal = inferenceTimeVal;
     this.maxResultsMinus = maxResultsMinus;
@@ -103,6 +127,36 @@ public final class InfoBottomSheetBinding implements ViewBinding {
     int id;
     missingId: {
       NestedScrollView bottomSheetLayout = (NestedScrollView) rootView;
+
+      id = R.id.btnResetApi;
+      Button btnResetApi = ViewBindings.findChildViewById(rootView, id);
+      if (btnResetApi == null) {
+        break missingId;
+      }
+
+      id = R.id.btnSaveApi;
+      Button btnSaveApi = ViewBindings.findChildViewById(rootView, id);
+      if (btnSaveApi == null) {
+        break missingId;
+      }
+
+      id = R.id.etRedApiKey;
+      TextInputEditText etRedApiKey = ViewBindings.findChildViewById(rootView, id);
+      if (etRedApiKey == null) {
+        break missingId;
+      }
+
+      id = R.id.etRedHost;
+      TextInputEditText etRedHost = ViewBindings.findChildViewById(rootView, id);
+      if (etRedHost == null) {
+        break missingId;
+      }
+
+      id = R.id.etRedPort;
+      TextInputEditText etRedPort = ViewBindings.findChildViewById(rootView, id);
+      if (etRedPort == null) {
+        break missingId;
+      }
 
       id = R.id.inference_time_label;
       TextView inferenceTimeLabel = ViewBindings.findChildViewById(rootView, id);
@@ -164,9 +218,10 @@ public final class InfoBottomSheetBinding implements ViewBinding {
         break missingId;
       }
 
-      return new InfoBottomSheetBinding((NestedScrollView) rootView, bottomSheetLayout,
-          inferenceTimeLabel, inferenceTimeVal, maxResultsMinus, maxResultsPlus, maxResultsValue,
-          spinnerDelegate, spinnerModel, thresholdMinus, thresholdPlus, thresholdValue);
+      return new InfoBottomSheetBinding((NestedScrollView) rootView, bottomSheetLayout, btnResetApi,
+          btnSaveApi, etRedApiKey, etRedHost, etRedPort, inferenceTimeLabel, inferenceTimeVal,
+          maxResultsMinus, maxResultsPlus, maxResultsValue, spinnerDelegate, spinnerModel,
+          thresholdMinus, thresholdPlus, thresholdValue);
     }
     String missingId = rootView.getResources().getResourceName(id);
     throw new NullPointerException("Missing required view with ID: ".concat(missingId));

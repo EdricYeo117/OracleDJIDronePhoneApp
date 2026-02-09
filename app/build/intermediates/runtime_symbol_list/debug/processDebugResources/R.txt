@@ -3185,6 +3185,8 @@ int id blocking 0x7f090058
 int id bottom 0x7f090059
 int id bottom_sheet_layout 0x7f09005a
 int id bounce 0x7f09005b
+int id btnResetApi 0x7f0901fc
+int id btnSaveApi 0x7f0901fd
 int id buttonPanel 0x7f09005c
 int id cache_measures 0x7f09005d
 int id camera_container 0x7f09005e
@@ -3262,6 +3264,9 @@ int id endToStart 0x7f0900a5
 int id enterAlways 0x7f0900a6
 int id enterAlwaysCollapsed 0x7f0900a7
 int id escape 0x7f0900a8
+int id etRedApiKey 0x7f0901fe
+int id etRedHost 0x7f090200
+int id etRedPort 0x7f090201
 int id exitUntilCollapsed 0x7f0900a9
 int id expand_activities_button 0x7f0900aa
 int id expanded_menu 0x7f0900ab
@@ -3984,8 +3989,10 @@ int string path_password_eye_mask_visible 0x7f1200af
 int string path_password_strike_through 0x7f1200b0
 int string phone_ip_placeholder 0x7f1200b1
 int string red_api_key 0x7f1200b2
-int string red_base_url 0x7f1200b3
+int string red_host 0x7f1200c0
 int string red_ip_placeholder 0x7f1200b4
+int string red_port 0x7f1200c2
+int string red_scheme 0x7f1200c1
 int string search_menu_title 0x7f1200b5
 int string searchbar_scrolling_view_behavior 0x7f1200b6
 int string searchview_clear_text_content_description 0x7f1200b7
