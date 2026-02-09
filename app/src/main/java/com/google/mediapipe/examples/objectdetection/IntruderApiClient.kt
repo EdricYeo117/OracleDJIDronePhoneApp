@@ -20,11 +20,6 @@ class IntruderApiClient(
     private val apiKey: String? = null
 ) {
     private val client = OkHttpClient.Builder()
-        .addNetworkInterceptor { chain ->
-            val req = chain.request()
-            Log.d("IntruderApiClient", "OUTGOING HEADERS ->\n" + req.headers.toString())
-            chain.proceed(req)
-        }
         .connectTimeout(3, TimeUnit.SECONDS)
         .writeTimeout(3, TimeUnit.SECONDS)
         .readTimeout(5, TimeUnit.SECONDS)

@@ -1,4 +1,10 @@
 
+/**
+ * Client for sending intruder detection events to a remote server.
+ *
+ * @property baseUrl The base URL of the remote server (e.g. "http://192.168.0.5:8080").
+ * @property apiKey Optional API key for authentication.
+ */
 @kotlin.Metadata(mv = {2, 2, 0}, k = 1, xi = 48, d1 = {"\u0000(\n\u0002\u0018\u0002\n\u0002\u0010\u0000\n\u0000\n\u0002\u0010\u000e\n\u0002\b\u0004\n\u0002\u0018\u0002\n\u0000\n\u0002\u0018\u0002\n\u0002\b\u0003\n\u0002\u0010\u0002\n\u0002\b\u0002\u0018\u00002\u00020\u0001B\u001b\u0012\u0006\u0010\u0002\u001a\u00020\u0003\u0012\n\b\u0002\u0010\u0004\u001a\u0004\u0018\u00010\u0003\u00a2\u0006\u0004\b\u0005\u0010\u0006J\u0012\u0010\u000b\u001a\u00020\u00032\b\u0010\f\u001a\u0004\u0018\u00010\u0003H\u0002J\u000e\u0010\r\u001a\u00020\u000e2\u0006\u0010\u000f\u001a\u00020\u0003R\u000e\u0010\u0002\u001a\u00020\u0003X\u0082\u0004\u00a2\u0006\u0002\n\u0000R\u0010\u0010\u0004\u001a\u0004\u0018\u00010\u0003X\u0082\u0004\u00a2\u0006\u0002\n\u0000R\u000e\u0010\u0007\u001a\u00020\bX\u0082\u0004\u00a2\u0006\u0002\n\u0000R\u000e\u0010\t\u001a\u00020\nX\u0082\u0004\u00a2\u0006\u0002\n\u0000\u00a8\u0006\u0010"}, d2 = {"LIntruderApiClient;", "", "baseUrl", "", "apiKey", "<init>", "(Ljava/lang/String;Ljava/lang/String;)V", "client", "Lokhttp3/OkHttpClient;", "jsonType", "Lokhttp3/MediaType;", "mask", "k", "sendIntruderEvent", "", "jsonBody", "app_debug"})
 public final class IntruderApiClient {
     @org.jetbrains.annotations.NotNull()
@@ -16,10 +22,20 @@ public final class IntruderApiClient {
         super();
     }
     
+    /**
+     * Masks the API key for logging purposes.
+     * Shows only the first 2-4 characters and the last 2-4 characters.
+     */
     private final java.lang.String mask(java.lang.String k) {
         return null;
     }
     
+    /**
+     * Sends a JSON payload to the /v1/intrusion/events endpoint.
+     * This is fire-and-forget; failures are logged but do not crash the app.
+     *
+     * @param jsonBody The full JSON string to send as the request body.
+     */
     public final void sendIntruderEvent(@org.jetbrains.annotations.NotNull()
     java.lang.String jsonBody) {
     }

@@ -56,16 +56,26 @@ class OverlayView(context: Context?, attrs: AttributeSet?) : View(context, attrs
     private var outputWidth = 0
     private var outputHeight = 0
     private var outputRotate = 0
+    private var offsetX: Float = 0f
+    private var offsetY: Float = 0f
     private var runningMode: RunningMode = RunningMode.IMAGE
 
     // Background subtraction / status (your existing additions)
     private var motionMask: Bitmap? = null
     private var motionActive: Boolean = false
     private var personActive: Boolean = false
-    private val maskPaint = Paint().apply { alpha = 120 } // semi-transparent
+    private val maskPaint = Paint().apply { alpha = 60 } // semi-transparent
     private var poseEnabled: Boolean = true
     private val transformMatrix = Matrix()
     private val tmpPts = FloatArray(2)
+
+    // Pose geometry (separate from detection)
+    private var poseOutputWidth = 0
+    private var poseOutputHeight = 0
+    private var poseOutputRotate = 0
+    private val poseTransformMatrix = Matrix()
+    private val poseTmpPts = FloatArray(2)
+
 
     init {
         initPaints()
@@ -116,6 +126,7 @@ class OverlayView(context: Context?, attrs: AttributeSet?) : View(context, attrs
         this.outputRotate = imageRotation
 
         recalcScaleFactor()
+        updateTransformMatrix()
         invalidate()
     }
 
@@ -143,15 +154,26 @@ class OverlayView(context: Context?, attrs: AttributeSet?) : View(context, attrs
     ) {
         poseResults = poseLandmarkerResults
 
-        // Only update geometry if we got real dimensions
         if (outputWidth > 0 && outputHeight > 0) {
-            this.outputWidth = outputWidth
-            this.outputHeight = outputHeight
-            this.outputRotate = imageRotation
-            recalcScaleFactor()
+            poseOutputWidth = outputWidth
+            poseOutputHeight = outputHeight
+            poseOutputRotate = imageRotation
+            updatePoseTransformMatrix()
         }
 
         invalidate()
+    }
+
+    private fun updatePoseTransformMatrix() {
+        poseTransformMatrix.reset()
+        poseTransformMatrix.postTranslate(-poseOutputWidth / 2f, -poseOutputHeight / 2f)
+        poseTransformMatrix.postRotate(poseOutputRotate.toFloat())
+
+        if (poseOutputRotate == 90 || poseOutputRotate == 270) {
+            poseTransformMatrix.postTranslate(poseOutputHeight / 2f, poseOutputWidth / 2f)
+        } else {
+            poseTransformMatrix.postTranslate(poseOutputWidth / 2f, poseOutputHeight / 2f)
+        }
     }
 
     // -----------------------------
@@ -186,15 +208,22 @@ class OverlayView(context: Context?, attrs: AttributeSet?) : View(context, attrs
 //            motionActive -> "MOTION"
 //            else -> ""
 //        }
-//        if (status.isNotEmpty()) {
+
 //            canvas.drawText("ACTIVE: $status", 20f, 60f, textPaint)
 //        }
 
-        // 3) Draw pose skeleton (NEW) — behind boxes or above? (currently behind boxes)
-        drawPose(canvas)
-
-        // 4) Draw object boxes + labels
+        // 3) Draw object boxes + labels
         drawObjectDetections(canvas)
+
+        // 4) Draw pose skeleton
+        drawPose(canvas)
+    }
+
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        recalcScaleFactor()
+        updateTransformMatrix()
+        updatePoseTransformMatrix()
     }
 
     private fun drawObjectDetections(canvas: Canvas) {
@@ -202,17 +231,19 @@ class OverlayView(context: Context?, attrs: AttributeSet?) : View(context, attrs
         val detections = detResult.detections()
         if (detections.isEmpty()) return
 
-        detections.forEachIndexed { index, det ->
+        detections.forEach { det ->
+            val categories = det.categories()
+            if (categories.isNullOrEmpty()) return@forEach
+
+            val best = categories.maxByOrNull { it.score() } ?: return@forEach
+            if (!best.categoryName().equals("person", ignoreCase = true)) return@forEach  // ✅ ONLY PERSON
+
             val mappedRect = mapRectToView(det.boundingBox())
             canvas.drawRect(mappedRect, boxPaint)
 
-            val categories = det.categories()
-            if (categories.isNullOrEmpty()) return@forEachIndexed
-
-            val category = categories[0]
-            val drawableText = category.categoryName() + " " + String.format("%.2f", category.score())
-
+            val drawableText = "person " + String.format("%.2f", best.score())
             textBackgroundPaint.getTextBounds(drawableText, 0, drawableText.length, bounds)
+
             val textWidth = bounds.width()
             val textHeight = bounds.height()
 
@@ -234,33 +265,47 @@ class OverlayView(context: Context?, attrs: AttributeSet?) : View(context, attrs
     }
 
     private fun drawPose(canvas: Canvas) {
+        if (!poseEnabled) return
+
         val pose = poseResults ?: return
         val people = pose.landmarks()
         if (people.isEmpty()) return
-        if (!poseEnabled) return
 
-        // Each "person" is a list of landmarks
+        val visThresh = 0.5f
+
         for (personLandmarks in people) {
-            // Draw points
-            for (lm in personLandmarks) {
-                val p = mapPointToView(lm.x() * outputWidth, lm.y() * outputHeight)
-                canvas.drawPoint(p.x, p.y, posePointPaint)
-            }
-
             // Draw connections
-            PoseLandmarker.POSE_LANDMARKS.forEach { connection ->
-                if (connection == null) return@forEach
-                val sIdx = connection.start()
-                val eIdx = connection.end()
-                if (sIdx >= personLandmarks.size || eIdx >= personLandmarks.size) return@forEach
+            for (pair in POSE_CONNECTIONS) {
+                val sIdx = pair[0]
+                val eIdx = pair[1]
+                if (sIdx >= personLandmarks.size || eIdx >= personLandmarks.size) continue
 
                 val s = personLandmarks[sIdx]
                 val e = personLandmarks[eIdx]
 
-                val p1 = mapPointToView(s.x() * outputWidth, s.y() * outputHeight)
-                val p2 = mapPointToView(e.x() * outputWidth, e.y() * outputHeight)
+                // Some builds return Optional<Float>, keep this safe
+                val sVis = s.visibility().orElse(1f)
+                val sPre = s.presence().orElse(1f)
+                val eVis = e.visibility().orElse(1f)
+                val ePre = e.presence().orElse(1f)
 
+                val sOk = sVis >= visThresh && sPre >= visThresh
+                val eOk = eVis >= visThresh && ePre >= visThresh
+                if (!sOk || !eOk) continue
+
+                val p1 = mapPosePointToView(s.x() * poseOutputWidth, s.y() * poseOutputHeight)
+                val p2 = mapPosePointToView(e.x() * poseOutputWidth, e.y() * poseOutputHeight)
                 canvas.drawLine(p1.x, p1.y, p2.x, p2.y, poseLinePaint)
+            }
+
+            // Draw points
+            for (lm in personLandmarks) {
+                val v = lm.visibility().orElse(1f)
+                val p = lm.presence().orElse(1f)
+                if (v < visThresh || p < visThresh) continue
+
+                val pt = mapPosePointToView(lm.x() * poseOutputWidth, lm.y() * poseOutputHeight)
+                canvas.drawPoint(pt.x, pt.y, posePointPaint)
             }
         }
     }
@@ -271,24 +316,30 @@ class OverlayView(context: Context?, attrs: AttributeSet?) : View(context, attrs
     private fun recalcScaleFactor() {
         if (outputWidth <= 0 || outputHeight <= 0 || width <= 0 || height <= 0) return
 
-        val rotatedWidthHeight = when (outputRotate) {
+        val rotated = when (outputRotate) {
             0, 180 -> Pair(outputWidth, outputHeight)
             90, 270 -> Pair(outputHeight, outputWidth)
             else -> Pair(outputWidth, outputHeight)
         }
 
         scaleFactor = when (runningMode) {
-            RunningMode.IMAGE,
-            RunningMode.VIDEO -> min(
-                width * 1f / rotatedWidthHeight.first,
-                height * 1f / rotatedWidthHeight.second
+            RunningMode.IMAGE, RunningMode.VIDEO -> min(
+                width * 1f / rotated.first,
+                height * 1f / rotated.second
             )
-
             RunningMode.LIVE_STREAM -> max(
-                width * 1f / rotatedWidthHeight.first,
-                height * 1f / rotatedWidthHeight.second
+                width * 1f / rotated.first,
+                height * 1f / rotated.second
             )
         }
+
+        // Center the scaled image inside the view (this is the missing piece)
+        val scaledW = rotated.first * scaleFactor
+        val scaledH = rotated.second * scaleFactor
+        offsetX = (width - scaledW) / 2f
+        offsetY = (height - scaledH) / 2f
+
+        updateTransformMatrix()
     }
 
     /**
@@ -311,11 +362,11 @@ class OverlayView(context: Context?, attrs: AttributeSet?) : View(context, attrs
         matrix.mapRect(boxRect)
 
         // Scale to view
-        boxRect.left *= scaleFactor
-        boxRect.top *= scaleFactor
-        boxRect.right *= scaleFactor
-        boxRect.bottom *= scaleFactor
-
+        // Scale to view + center offset
+        boxRect.left = boxRect.left * scaleFactor + offsetX
+        boxRect.top = boxRect.top * scaleFactor + offsetY
+        boxRect.right = boxRect.right * scaleFactor + offsetX
+        boxRect.bottom = boxRect.bottom * scaleFactor + offsetY
         return boxRect
     }
 
@@ -330,6 +381,13 @@ class OverlayView(context: Context?, attrs: AttributeSet?) : View(context, attrs
         }
     }
 
+    private fun mapPosePointToView(x: Float, y: Float): PointF {
+        poseTmpPts[0] = x
+        poseTmpPts[1] = y
+        poseTransformMatrix.mapPoints(poseTmpPts)
+        return PointF(poseTmpPts[0] * scaleFactor + offsetX, poseTmpPts[1] * scaleFactor + offsetY)
+    }
+
     /**
      * Maps a point in output-image coordinates into view coordinates,
      * applying the same rotation transform and scaleFactor.
@@ -338,7 +396,7 @@ class OverlayView(context: Context?, attrs: AttributeSet?) : View(context, attrs
         tmpPts[0] = x
         tmpPts[1] = y
         transformMatrix.mapPoints(tmpPts)
-        return PointF(tmpPts[0] * scaleFactor, tmpPts[1] * scaleFactor)
+        return PointF(tmpPts[0] * scaleFactor + offsetX, tmpPts[1] * scaleFactor + offsetY)
     }
 
     // -----------------------------
@@ -371,5 +429,30 @@ class OverlayView(context: Context?, attrs: AttributeSet?) : View(context, attrs
     companion object {
         private const val BOUNDING_RECT_TEXT_PADDING = 8
         private const val POSE_STROKE_WIDTH = 12F
+
+        // Mediapipe Pose connections (landmark index pairs)
+        private val POSE_CONNECTIONS: Array<IntArray> = arrayOf(
+            intArrayOf(0, 1), intArrayOf(1, 2), intArrayOf(2, 3), intArrayOf(3, 7),
+            intArrayOf(0, 4), intArrayOf(4, 5), intArrayOf(5, 6), intArrayOf(6, 8),
+            intArrayOf(9, 10),
+
+            intArrayOf(11, 12),
+            intArrayOf(11, 13), intArrayOf(13, 15),
+            intArrayOf(15, 17), intArrayOf(15, 19), intArrayOf(15, 21),
+            intArrayOf(17, 19),
+
+            intArrayOf(12, 14), intArrayOf(14, 16),
+            intArrayOf(16, 18), intArrayOf(16, 20), intArrayOf(16, 22),
+            intArrayOf(18, 20),
+
+            intArrayOf(11, 23), intArrayOf(12, 24),
+            intArrayOf(23, 24),
+
+            intArrayOf(23, 25), intArrayOf(24, 26),
+            intArrayOf(25, 27), intArrayOf(26, 28),
+            intArrayOf(27, 29), intArrayOf(28, 30),
+            intArrayOf(29, 31), intArrayOf(30, 32),
+            intArrayOf(27, 31), intArrayOf(28, 32)
+        )
     }
 }

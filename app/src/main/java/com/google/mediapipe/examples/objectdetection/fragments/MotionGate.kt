@@ -36,14 +36,14 @@ data class MotionDecision(
  * @param warmupFrames Number of initial frames to build the background model.
  */
 class MotionGate(
-    private val downsampleStep: Int = 6,        // 2..8 typical
-    private val alpha: Float = 0.08f,           // EMA update rate (0.02..0.10)
+    private val downsampleStep: Int = 4,        // 2..8 typical
+    private val alpha: Float = 0.10f,           // EMA update rate (0.02..0.10)
     private val diffThreshold: Int = 28,        // luma diff threshold (10..30)
-    private val ratioThreshold: Float = 0.03f,  // % pixels changed (0.01..0.06)
-    private val minConsecutive: Int = 3,        // motion frames required
-    private val cooldownMs: Long = 10_000L,     // min time between triggers
+    private val ratioThreshold: Float = 0.02f,  // % pixels changed (0.01..0.06)
+    private val minConsecutive: Int = 2,        // motion frames required
+    private val cooldownMs: Long = 2_000L,     // min time between triggers
     private val globalChangeIgnoreRatio: Float = 0.60f, // ignore exposure shifts
-    private val warmupFrames: Int = 15          // build background before triggering
+    private val warmupFrames: Int = 8          // build background before triggering
 ) {
     private var bg: FloatArray? = null
     private var bgW = 0
@@ -52,6 +52,8 @@ class MotionGate(
     private var consecutive = 0
     private var lastTriggerMs = 0L
     private var frameCount = 0
+
+    private val bgUpdateMaxDiff: Int = 12  // pixels with diff <= 12 can still update bg
 
     fun update(image: ImageProxy, nowMs: Long = System.currentTimeMillis()): MotionDecision {
         val yPlane = image.planes[0]
@@ -117,10 +119,13 @@ class MotionGate(
                 if (isChanged) {
                     rawChanged++
                     rawMask[idx] = 0xFF.toByte()
-                    // Optionally: do NOT update bg here
+
+                    // Optional: still allow bg to adapt slightly if it's not a huge change
+                    if (d <= diffThreshold + bgUpdateMaxDiff) {
+                        bg!![idx] = prev + (alpha * 0.25f) * (cur - prev)  // slow update
+                    }
                 } else {
                     rawMask[idx] = 0x00
-                    // EMA update only on stable/background pixels
                     bg!![idx] = prev + alpha * (cur - prev)
                 }
 

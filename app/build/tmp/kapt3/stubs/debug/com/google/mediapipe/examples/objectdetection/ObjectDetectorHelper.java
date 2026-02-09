@@ -1,5 +1,22 @@
 package com.google.mediapipe.examples.objectdetection;
 
+/**
+ * Helper class for wrapping MediaPipe Object Detection logic.
+ *
+ * Handles:
+ * - Initialization of the [ObjectDetector]
+ * - Delegate selection (CPU vs GPU)
+ * - Model selection
+ * - Inference on Live Streams, Images, and Videos
+ *
+ * @param threshold Minimum confidence score for a detection to be considered valid.
+ * @param maxResults Maximum number of objects to detect in a single frame.
+ * @param currentDelegate The hardware delegate to use (CPU or GPU).
+ * @param currentModel The index of the model to use.
+ * @param runningMode The MediaPipe running mode (IMAGE, VIDEO, or LIVE_STREAM).
+ * @param context Application context.
+ * @param objectDetectorListener Listener for receiving results or errors (required for LIVE_STREAM).
+ */
 @kotlin.Metadata(mv = {2, 2, 0}, k = 1, xi = 48, d1 = {"\u0000\u008e\u0001\n\u0002\u0018\u0002\n\u0002\u0010\u0000\n\u0000\n\u0002\u0010\u0007\n\u0000\n\u0002\u0010\b\n\u0002\b\u0003\n\u0002\u0018\u0002\n\u0000\n\u0002\u0018\u0002\n\u0000\n\u0002\u0018\u0002\n\u0002\b\u0019\n\u0002\u0018\u0002\n\u0002\b\u0002\n\u0002\u0018\u0002\n\u0000\n\u0002\u0018\u0002\n\u0000\n\u0002\u0010\u0002\n\u0002\b\u0002\n\u0002\u0010\u000b\n\u0000\n\u0002\u0018\u0002\n\u0000\n\u0002\u0018\u0002\n\u0000\n\u0002\u0010\t\n\u0002\b\u0002\n\u0002\u0018\u0002\n\u0002\b\u0002\n\u0002\u0018\u0002\n\u0002\b\u0002\n\u0002\u0018\u0002\n\u0002\b\u0003\n\u0002\u0018\u0002\n\u0002\b\u0003\n\u0002\u0018\u0002\n\u0002\u0018\u0002\n\u0002\b\u0006\u0018\u0000 M2\u00020\u0001:\u0003LMNBM\u0012\b\b\u0002\u0010\u0002\u001a\u00020\u0003\u0012\b\b\u0002\u0010\u0004\u001a\u00020\u0005\u0012\b\b\u0002\u0010\u0006\u001a\u00020\u0005\u0012\b\b\u0002\u0010\u0007\u001a\u00020\u0005\u0012\b\b\u0002\u0010\b\u001a\u00020\t\u0012\u0006\u0010\n\u001a\u00020\u000b\u0012\n\b\u0002\u0010\f\u001a\u0004\u0018\u00010\r\u00a2\u0006\u0004\b\u000e\u0010\u000fJ\u0006\u0010-\u001a\u00020.J\u0006\u0010/\u001a\u00020.J\u0006\u00100\u001a\u000201J\u0018\u00102\u001a\u0004\u0018\u0001032\u0006\u00104\u001a\u0002052\u0006\u00106\u001a\u000207J\u000e\u00108\u001a\u00020.2\u0006\u00109\u001a\u00020:J\u0018\u0010;\u001a\u00020.2\u0006\u00109\u001a\u00020:2\u0006\u0010<\u001a\u00020=H\u0002J\u0018\u0010>\u001a\u00020.2\u0006\u0010?\u001a\u00020@2\u0006\u0010A\u001a\u000207H\u0007J\u0018\u0010B\u001a\u00020.2\u0006\u0010C\u001a\u00020D2\u0006\u0010E\u001a\u00020@H\u0002J\u0014\u0010F\u001a\u00020.2\n\u0010G\u001a\u00060Hj\u0002`IH\u0002J\u0010\u0010J\u001a\u0004\u0018\u0001032\u0006\u0010K\u001a\u00020=R\u001a\u0010\u0002\u001a\u00020\u0003X\u0086\u000e\u00a2\u0006\u000e\n\u0000\u001a\u0004\b\u0010\u0010\u0011\"\u0004\b\u0012\u0010\u0013R\u001a\u0010\u0004\u001a\u00020\u0005X\u0086\u000e\u00a2\u0006\u000e\n\u0000\u001a\u0004\b\u0014\u0010\u0015\"\u0004\b\u0016\u0010\u0017R\u001a\u0010\u0006\u001a\u00020\u0005X\u0086\u000e\u00a2\u0006\u000e\n\u0000\u001a\u0004\b\u0018\u0010\u0015\"\u0004\b\u0019\u0010\u0017R\u001a\u0010\u0007\u001a\u00020\u0005X\u0086\u000e\u00a2\u0006\u000e\n\u0000\u001a\u0004\b\u001a\u0010\u0015\"\u0004\b\u001b\u0010\u0017R\u001a\u0010\b\u001a\u00020\tX\u0086\u000e\u00a2\u0006\u000e\n\u0000\u001a\u0004\b\u001c\u0010\u001d\"\u0004\b\u001e\u0010\u001fR\u0011\u0010\n\u001a\u00020\u000b\u00a2\u0006\b\n\u0000\u001a\u0004\b \u0010!R\u001c\u0010\f\u001a\u0004\u0018\u00010\rX\u0086\u000e\u00a2\u0006\u000e\n\u0000\u001a\u0004\b\"\u0010#\"\u0004\b$\u0010%R\u0010\u0010&\u001a\u0004\u0018\u00010\'X\u0082\u000e\u00a2\u0006\u0002\n\u0000R\u000e\u0010(\u001a\u00020\u0005X\u0082\u000e\u00a2\u0006\u0002\n\u0000R\u000e\u0010)\u001a\u00020*X\u0082\u0004\u00a2\u0006\u0002\n\u0000R\u000e\u0010+\u001a\u00020,X\u0082.\u00a2\u0006\u0002\n\u0000\u00a8\u0006O"}, d2 = {"Lcom/google/mediapipe/examples/objectdetection/ObjectDetectorHelper;", "", "threshold", "", "maxResults", "", "currentDelegate", "currentModel", "runningMode", "Lcom/google/mediapipe/tasks/vision/core/RunningMode;", "context", "Landroid/content/Context;", "objectDetectorListener", "Lcom/google/mediapipe/examples/objectdetection/ObjectDetectorHelper$DetectorListener;", "<init>", "(FIIILcom/google/mediapipe/tasks/vision/core/RunningMode;Landroid/content/Context;Lcom/google/mediapipe/examples/objectdetection/ObjectDetectorHelper$DetectorListener;)V", "getThreshold", "()F", "setThreshold", "(F)V", "getMaxResults", "()I", "setMaxResults", "(I)V", "getCurrentDelegate", "setCurrentDelegate", "getCurrentModel", "setCurrentModel", "getRunningMode", "()Lcom/google/mediapipe/tasks/vision/core/RunningMode;", "setRunningMode", "(Lcom/google/mediapipe/tasks/vision/core/RunningMode;)V", "getContext", "()Landroid/content/Context;", "getObjectDetectorListener", "()Lcom/google/mediapipe/examples/objectdetection/ObjectDetectorHelper$DetectorListener;", "setObjectDetectorListener", "(Lcom/google/mediapipe/examples/objectdetection/ObjectDetectorHelper$DetectorListener;)V", "objectDetector", "Lcom/google/mediapipe/tasks/vision/objectdetector/ObjectDetector;", "imageRotation", "yuvToRgbConverter", "Lcom/google/mediapipe/examples/objectdetection/YuvToRgbConverter;", "imageProcessingOptions", "Lcom/google/mediapipe/tasks/vision/core/ImageProcessingOptions;", "clearObjectDetector", "", "setupObjectDetector", "isClosed", "", "detectVideoFile", "Lcom/google/mediapipe/examples/objectdetection/ObjectDetectorHelper$ResultBundle;", "videoUri", "Landroid/net/Uri;", "inferenceIntervalMs", "", "detectLivestreamFrame", "imageProxy", "Landroidx/camera/core/ImageProxy;", "copyRgbaToBitmap", "bitmap", "Landroid/graphics/Bitmap;", "detectAsync", "mpImage", "Lcom/google/mediapipe/framework/image/MPImage;", "frameTime", "returnLivestreamResult", "result", "Lcom/google/mediapipe/tasks/vision/objectdetector/ObjectDetectorResult;", "input", "returnLivestreamError", "error", "Ljava/lang/RuntimeException;", "Lkotlin/RuntimeException;", "detectImage", "image", "ResultBundle", "Companion", "DetectorListener", "app_debug"})
 public final class ObjectDetectorHelper {
     private float threshold;
@@ -92,6 +109,12 @@ public final class ObjectDetectorHelper {
     public final void clearObjectDetector() {
     }
     
+    /**
+     * Initialize the object detector using current settings on the
+     * thread that is using it. CPU can be used with detectors
+     * that are created on the main thread and used on a background thread, but
+     * the GPU delegate needs to be used on the thread that initialized the detector.
+     */
     public final void setupObjectDetector() {
     }
     
@@ -99,12 +122,26 @@ public final class ObjectDetectorHelper {
         return false;
     }
     
+    /**
+     * Accepts the URI for a video file loaded from the user's gallery and attempts to run
+     * object detection inference on the video. This process will evaluate every frame in
+     * the video and attach the results to a bundle that will be returned.
+     *
+     * @param videoUri The URI of the video file to process.
+     * @param inferenceIntervalMs The interval between frames to process (in milliseconds).
+     */
     @org.jetbrains.annotations.Nullable()
     public final com.google.mediapipe.examples.objectdetection.ObjectDetectorHelper.ResultBundle detectVideoFile(@org.jetbrains.annotations.NotNull()
     android.net.Uri videoUri, long inferenceIntervalMs) {
         return null;
     }
     
+    /**
+     * Runs object detection on live streaming cameras frame-by-frame and returns the results
+     * asynchronously to the caller.
+     *
+     * @param imageProxy The image from CameraX analysis.
+     */
     public final void detectLivestreamFrame(@org.jetbrains.annotations.NotNull()
     androidx.camera.core.ImageProxy imageProxy) {
     }
@@ -127,6 +164,12 @@ public final class ObjectDetectorHelper {
     private final void returnLivestreamError(java.lang.RuntimeException error) {
     }
     
+    /**
+     * Accepted a Bitmap and runs object detection inference on it to return results back
+     * to the caller.
+     *
+     * @param image The input bitmap to detect objects in.
+     */
     @org.jetbrains.annotations.Nullable()
     public final com.google.mediapipe.examples.objectdetection.ObjectDetectorHelper.ResultBundle detectImage(@org.jetbrains.annotations.NotNull()
     android.graphics.Bitmap image) {
@@ -155,6 +198,10 @@ public final class ObjectDetectorHelper {
         }
     }
     
+    /**
+     * Wraps results from inference, the time it takes for inference to be performed, and
+     * the input image and height for properly scaling UI to return back to callers.
+     */
     @kotlin.Metadata(mv = {2, 2, 0}, k = 1, xi = 48, d1 = {"\u00000\n\u0002\u0018\u0002\n\u0002\u0010\u0000\n\u0000\n\u0002\u0010 \n\u0002\u0018\u0002\n\u0000\n\u0002\u0010\t\n\u0000\n\u0002\u0010\b\n\u0002\b\u0013\n\u0002\u0010\u000b\n\u0002\b\u0003\n\u0002\u0010\u000e\n\u0000\b\u0086\b\u0018\u00002\u00020\u0001B7\u0012\f\u0010\u0002\u001a\b\u0012\u0004\u0012\u00020\u00040\u0003\u0012\u0006\u0010\u0005\u001a\u00020\u0006\u0012\u0006\u0010\u0007\u001a\u00020\b\u0012\u0006\u0010\t\u001a\u00020\b\u0012\b\b\u0002\u0010\n\u001a\u00020\b\u00a2\u0006\u0004\b\u000b\u0010\fJ\u000f\u0010\u0015\u001a\b\u0012\u0004\u0012\u00020\u00040\u0003H\u00c6\u0003J\t\u0010\u0016\u001a\u00020\u0006H\u00c6\u0003J\t\u0010\u0017\u001a\u00020\bH\u00c6\u0003J\t\u0010\u0018\u001a\u00020\bH\u00c6\u0003J\t\u0010\u0019\u001a\u00020\bH\u00c6\u0003JA\u0010\u001a\u001a\u00020\u00002\u000e\b\u0002\u0010\u0002\u001a\b\u0012\u0004\u0012\u00020\u00040\u00032\b\b\u0002\u0010\u0005\u001a\u00020\u00062\b\b\u0002\u0010\u0007\u001a\u00020\b2\b\b\u0002\u0010\t\u001a\u00020\b2\b\b\u0002\u0010\n\u001a\u00020\bH\u00c6\u0001J\u0013\u0010\u001b\u001a\u00020\u001c2\b\u0010\u001d\u001a\u0004\u0018\u00010\u0001H\u00d6\u0003J\t\u0010\u001e\u001a\u00020\bH\u00d6\u0001J\t\u0010\u001f\u001a\u00020 H\u00d6\u0001R\u0017\u0010\u0002\u001a\b\u0012\u0004\u0012\u00020\u00040\u0003\u00a2\u0006\b\n\u0000\u001a\u0004\b\r\u0010\u000eR\u0011\u0010\u0005\u001a\u00020\u0006\u00a2\u0006\b\n\u0000\u001a\u0004\b\u000f\u0010\u0010R\u0011\u0010\u0007\u001a\u00020\b\u00a2\u0006\b\n\u0000\u001a\u0004\b\u0011\u0010\u0012R\u0011\u0010\t\u001a\u00020\b\u00a2\u0006\b\n\u0000\u001a\u0004\b\u0013\u0010\u0012R\u0011\u0010\n\u001a\u00020\b\u00a2\u0006\b\n\u0000\u001a\u0004\b\u0014\u0010\u0012\u00a8\u0006!"}, d2 = {"Lcom/google/mediapipe/examples/objectdetection/ObjectDetectorHelper$ResultBundle;", "", "results", "", "Lcom/google/mediapipe/tasks/vision/objectdetector/ObjectDetectorResult;", "inferenceTime", "", "inputImageHeight", "", "inputImageWidth", "inputImageRotation", "<init>", "(Ljava/util/List;JIII)V", "getResults", "()Ljava/util/List;", "getInferenceTime", "()J", "getInputImageHeight", "()I", "getInputImageWidth", "getInputImageRotation", "component1", "component2", "component3", "component4", "component5", "copy", "equals", "", "other", "hashCode", "toString", "", "app_debug"})
     public static final class ResultBundle {
         @org.jetbrains.annotations.NotNull()

@@ -57,6 +57,7 @@ import com.google.mediapipe.examples.objectdetection.utils.NetworkUtils
 
 import android.graphics.Bitmap
 import androidx.camera.core.ImageProxy
+import com.google.mediapipe.tasks.vision.poselandmarker.PoseLandmarkerResult
 
 /**
  * The core fragment for the live camera feed.
@@ -80,6 +81,11 @@ class CameraFragment : Fragment(), ObjectDetectorHelper.DetectorListener {
     private var netCallback: ConnectivityManager.NetworkCallback? = null
     private var lastPingMs = 0L
     var lastMotionActive: Boolean = false
+    private var analyzeUntilMs = 0L
+    private val analyzeHoldMs = 1500L
+    private var lastDetectMs = 0L
+    private val detectIntervalNoMotionMs = 400L   // ~2.5 FPS when no motion
+    private val detectIntervalMotionMs = 0L       // full rate during motion/analyze window
     private val pingCooldownMs = 5_000L  // prevents spam
     private val TAG = "ObjectDetection"
     private val motionGate = MotionGate()
@@ -105,6 +111,7 @@ class CameraFragment : Fragment(), ObjectDetectorHelper.DetectorListener {
     private var poseHelper: PoseLandmarkerHelper? = null
     private var lastPoseRunMs: Long = 0L
     private val poseMinIntervalMs = 250L // 4 Hz
+    @Volatile private var latestPoseRotationDegrees: Int = 0
 
     @Volatile private var latestPoseBitmap: android.graphics.Bitmap? = null
     @Volatile private var latestPoseTimestampMs: Long = 0L
@@ -383,6 +390,14 @@ class CameraFragment : Fragment(), ObjectDetectorHelper.DetectorListener {
         )
     }
 
+    private fun rotateBitmap(src: Bitmap, rotationDegrees: Int): Bitmap {
+        if (rotationDegrees == 0) return src
+        val m = android.graphics.Matrix().apply { postRotate(rotationDegrees.toFloat()) }
+        val out = Bitmap.createBitmap(src, 0, 0, src.width, src.height, m, true)
+        if (out != src) src.recycle()
+        return out
+    }
+
     // Declare and bind preview, capture and analysis use cases
     @SuppressLint("UnsafeOptInUsageError")
     private fun bindCameraUseCases() {
@@ -412,48 +427,54 @@ class CameraFragment : Fragment(), ObjectDetectorHelper.DetectorListener {
                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                 .setOutputImageFormat(OUTPUT_IMAGE_FORMAT_RGBA_8888)
                 .build()
-                // The analyzer can then be assigned to the instance
-                .also {
-                    it.setAnalyzer(backgroundExecutor) { imageProxy ->
-                        val decision = motionGate.update(imageProxy)
-                        lastMotionActive = decision.motionFrame
+                .also { analysis ->
+                    analysis.setAnalyzer(backgroundExecutor) { imageProxy ->
+                        val now = System.currentTimeMillis()
+                        val decision = motionGate.update(imageProxy, now)
 
-                        // Update UI mask (optional)
+                        // UI: show mask even if we don't analyze
+                        lastMotionActive = decision.motionFrame
                         activity?.runOnUiThread {
+                            if (_fragmentCameraBinding == null) return@runOnUiThread
                             fragmentCameraBinding.overlay.setMotionMask(decision.maskBitmap, decision.motionFrame)
                         }
 
-                        if (!decision.motionFrame) {
-                            // Reset persistence when motion stops
-                            personFilter.reset()
-                            poseFilter.reset()
+                        // Latch window on trigger (boost mode)
+                        if (decision.triggered) {
+                            analyzeUntilMs = now + analyzeHoldMs
+                        }
 
+                        // Decide whether we’re in boosted mode
+                        val inBoost = now < analyzeUntilMs
+                        val interval = if (inBoost) detectIntervalMotionMs else detectIntervalNoMotionMs
+
+                        // Throttle detection when no motion
+                        if (interval > 0 && (now - lastDetectMs) < interval) {
                             imageProxy.close()
                             return@setAnalyzer
                         }
+                        lastDetectMs = now
 
-                        // Capture a copy of the current frame for optional pose verification later
-                        // (Must do BEFORE passing ownership away)
+                        // Capture pose bitmap for later pose inference (keep this)
+                        val rot = imageProxy.imageInfo.rotationDegrees
+                        latestPoseRotationDegrees = rot
                         try {
-                            val bmp = rgba8888ImageProxyToBitmap(imageProxy)
-                            latestPoseBitmap = bmp
+                            val bmpRaw = rgba8888ImageProxyToBitmap(imageProxy)
+                            val bmpUpright = rotateBitmap(bmpRaw, rot)
+                            latestPoseBitmap = bmpUpright
                             latestPoseTimestampMs = android.os.SystemClock.uptimeMillis()
                         } catch (e: Exception) {
                             Log.w(TAG, "Failed to capture pose bitmap: ${e.message}")
                         }
 
-                        // IMPORTANT: do NOT close imageProxy here.
-                        // Pass ownership to ObjectDetectorHelper, which will close it.
-                        objectDetectorHelper.detectLivestreamFrame(imageProxy)
+                        // Run object detection ALWAYS (throttled if no motion)
+                        objectDetectorHelper.detectLivestreamFrame(imageProxy) // helper closes imageProxy
                     }
                 }
 
-        // Must unbind the use-cases before rebinding them
         cameraProvider.unbindAll()
 
         try {
-            // A variable number of use-cases can be passed here -
-            // camera provides access to CameraControl & CameraInfo
             camera = cameraProvider.bindToLifecycle(
                 this,
                 cameraSelector,
@@ -461,7 +482,6 @@ class CameraFragment : Fragment(), ObjectDetectorHelper.DetectorListener {
                 imageAnalyzer
             )
 
-            // Attach the viewfinder's surface provider to preview use case
             preview?.setSurfaceProvider(fragmentCameraBinding.viewFinder.surfaceProvider)
         } catch (exc: Exception) {
             Log.e(TAG, "Use case binding failed", exc)
@@ -491,6 +511,7 @@ class CameraFragment : Fragment(), ObjectDetectorHelper.DetectorListener {
 
         val detectionResult = resultBundle.results[0]
 
+        // ===== Find best "person" score =====
         var bestPersonScore = 0.0f
         for (det in detectionResult.detections()) {
             for (cat in det.categories()) {
@@ -502,15 +523,12 @@ class CameraFragment : Fragment(), ObjectDetectorHelper.DetectorListener {
 
         val personThisFrame = bestPersonScore >= 0.80f
         val personPersistent = personFilter.update(personThisFrame)
-
         val motionActive = lastMotionActive
 
-        // ===== UI updates (run on UI thread) =====
+        // ===== UI updates =====
         activity?.runOnUiThread {
             if (_fragmentCameraBinding == null) return@runOnUiThread
 
-            // Status badge should reflect "personThisFrame" visually,
-            // but your "confirmed intruder" should rely on personPersistent/pose below.
             when {
                 personThisFrame -> {
                     fragmentCameraBinding.tvStatus.text = getString(R.string.status_person)
@@ -528,76 +546,94 @@ class CameraFragment : Fragment(), ObjectDetectorHelper.DetectorListener {
 
             fragmentCameraBinding.overlay.setPersonActive(personThisFrame)
 
-            if (personThisFrame) {
-                fragmentCameraBinding.overlay.setResults(
-                    detectionResult,
-                    resultBundle.inputImageHeight,
-                    resultBundle.inputImageWidth,
-                    resultBundle.inputImageRotation
-                )
-            } else {
-                // just stop drawing boxes, keep mask + pose if you want
-                fragmentCameraBinding.overlay.setResults(
-                    ObjectDetectorResult.create(emptyList(), 0), // not convenient in MP
-                    resultBundle.inputImageHeight,
-                    resultBundle.inputImageWidth,
-                    resultBundle.inputImageRotation
-                )
-                // OR simplest: add a helper method setDetectionResults(null) in OverlayView
-            }
-            fragmentCameraBinding.overlay.invalidate()
+            // pass the original result (no proto conversion)
+            fragmentCameraBinding.overlay.setResults(
+                detectionResult,
+                resultBundle.inputImageHeight,
+                resultBundle.inputImageWidth,
+                resultBundle.inputImageRotation
+            )
         }
 
         // ===== Intruder confirmation pipeline (background thread) =====
         backgroundExecutor.execute {
             val poseEnabled = AppPrefs.isPoseVerificationEnabled(requireContext())
 
+            // Must be persistent person
             if (!personPersistent) {
                 poseFilter.reset()
                 return@execute
             }
 
-            // ✅ motion gate for pose
+            // Must still be in motion state
             if (!lastMotionActive) {
                 poseFilter.reset()
                 return@execute
             }
 
+            // If pose verification disabled, confirm immediately
             if (!poseEnabled) {
                 pingIntruder(bestPersonScore)
                 return@execute
             }
 
-            // Pose path (optional toggle)
+            // Pose verification path
             val nowMs = android.os.SystemClock.uptimeMillis()
             if ((nowMs - lastPoseRunMs) < poseMinIntervalMs) {
-                // Do not penalize poseFilter when we didn't run pose
+                // Don’t penalize if we skipped pose due to rate limiting
                 return@execute
             }
 
-            val bmp = latestPoseBitmap ?: return@execute
+            val bmpUpright = latestPoseBitmap ?: return@execute
             ensurePoseHelper()
 
-            // Build MPImage from bitmap
-            val mpImage = com.google.mediapipe.framework.image.BitmapImageBuilder(bmp).build()
+            val mpImage = com.google.mediapipe.framework.image.BitmapImageBuilder(bmpUpright).build()
             val ts = latestPoseTimestampMs.takeIf { it > 0L } ?: nowMs
 
-            val poseResult = poseHelper?.detectVideo(mpImage, ts)
+            val poseResult = try {
+                poseHelper?.detectVideo(mpImage, ts)
+            } catch (e: Exception) {
+                Log.w(TAG, "Pose detect failed: ${e.message}")
+                null
+            }
+
             lastPoseRunMs = nowMs
 
-            // draw skeleton (even if not "persistent" yet)
+            // Draw skeleton. Since pose ran on UPRIGHT bitmap, rotation must be 0.
             activity?.runOnUiThread {
                 if (_fragmentCameraBinding == null) return@runOnUiThread
+
+                val w = bmpUpright.width
+                val h = bmpUpright.height
+
                 fragmentCameraBinding.overlay.setPoseResults(
                     poseResult,
-                    resultBundle.inputImageHeight,
-                    resultBundle.inputImageWidth,
-                    resultBundle.inputImageRotation
+                    h,
+                    w,
+                    0
                 )
             }
 
-            val hasPoseThisCheck = poseResult != null && poseResult.landmarks().isNotEmpty()
-            val posePersistent = poseFilter.update(hasPoseThisCheck)
+// --- Draw skeleton for visibility (any pose landmarks) ---
+            val hasAnyPoseForDisplay = poseResult != null && poseResult.landmarks().isNotEmpty()
+
+            activity?.runOnUiThread {
+                if (_fragmentCameraBinding == null) return@runOnUiThread
+
+                // IMPORTANT: pose ran on bmpUpright, so use its dimensions and rotation=0
+                fragmentCameraBinding.overlay.setPoseResults(
+                    if (hasAnyPoseForDisplay) poseResult else null,
+                    bmpUpright.height,
+                    bmpUpright.width,
+                    0
+                )
+            }
+
+// --- Gate intruder confirmation using full-body check ---
+            val passesFullBodyGate = isLikelyFullBodyPose(poseResult)
+
+// Use the full-body gate for temporal filtering (prevents flicker-trigger pings)
+            val posePersistent = poseFilter.update(passesFullBodyGate)
 
             if (posePersistent) {
                 pingIntruder(bestPersonScore)
@@ -623,7 +659,6 @@ class CameraFragment : Fragment(), ObjectDetectorHelper.DetectorListener {
         intruderClient.sendIntruderEvent(json)
     }
 
-
     override fun onError(error: String, errorCode: Int) {
         activity?.runOnUiThread {
             Toast.makeText(requireContext(), error, Toast.LENGTH_SHORT).show()
@@ -633,6 +668,25 @@ class CameraFragment : Fragment(), ObjectDetectorHelper.DetectorListener {
                 )
             }
         }
+    }
+
+    private fun isLikelyFullBodyPose(pose: PoseLandmarkerResult?): Boolean {
+        if (pose == null) return false
+        val people = pose.landmarks()
+        if (people.isEmpty()) return false
+
+        val lm = people[0]
+        if (lm.size < 25) return false
+
+        fun ok(i: Int): Boolean {
+            val v = lm[i].visibility().orElse(1f)
+            val p = lm[i].presence().orElse(1f)
+            return v >= 0.5f && p >= 0.5f
+        }
+
+        val shouldersOk = ok(11) && ok(12)
+        val hipsOk = ok(23) && ok(24)
+        return shouldersOk && hipsOk
     }
 
     private fun rgba8888ImageProxyToBitmap(imageProxy: ImageProxy): Bitmap {
