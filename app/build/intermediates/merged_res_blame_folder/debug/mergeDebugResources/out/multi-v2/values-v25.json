@@ -4,7 +4,7 @@
             "outputFile": "com.google.mediapipe.examples.objectdetection.app-mergeDebugResources-2:/values-v25/values-v25.xml",
             "map": [
                 {
-                    "source": "C:\\Users\\Edric Yeo\\.gradle\\caches\\9.1.0\\transforms\\a7108ecfdc35544e3b75a19f7e32fd3b\\workspace\\transformed\\appcompat-1.7.0\\res\\values-v25\\values-v25.xml",
+                    "source": "C:\\Users\\spart\\.gradle\\caches\\9.1.0\\transforms\\a7108ecfdc35544e3b75a19f7e32fd3b\\workspace\\transformed\\appcompat-1.7.0\\res\\values-v25\\values-v25.xml",
                     "from": {
                         "startLines": "2,3,4,6",
                         "startColumns": "4,4,4,4",

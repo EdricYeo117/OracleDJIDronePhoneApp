@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/camera_container"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@android:color/black">
+
+    <!-- Content below the toolbar -->
+    <FrameLayout
+        android:id="@+id/content_container"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <!-- Camera feed -->
+        <androidx.camera.view.PreviewView
+            android:id="@+id/view_finder"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            app:scaleType="fillCenter" />
+
+        <!-- Overlay draws: mask, boxes, ACTIVE: ... -->
+        <com.google.mediapipe.examples.objectdetection.OverlayView
+            android:id="@+id/overlay"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+        <!-- Status badge (TOP-LEFT, below toolbar automatically) -->
+        <TextView
+            android:id="@+id/tvStatus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="top|start"
+            android:layout_marginStart="12dp"
+            android:layout_marginTop="12dp"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp"
+            android:paddingTop="6dp"
+            android:paddingBottom="6dp"
+            android:text="IDLE"
+            android:textSize="12sp"
+            android:textColor="@color/oracle_white"
+            android:background="@drawable/bg_oracle_badge_outline" />
+
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/switch_increased_accuracy"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="top|end"
+            android:layout_marginTop="12dp"
+            android:layout_marginEnd="12dp"
+            android:text="Increased accuracy (pose)"
+            android:textColor="@color/oracle_white"/>
+
+        <!-- DEBUG NETWORK LABELS (TOP-LEFT, stacked under status) -->
+        <LinearLayout
+            android:id="@+id/network_info_container"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="top|start"
+            android:layout_marginStart="12dp"
+            android:layout_marginTop="52dp"
+            android:background="@drawable/bg_oracle_badge_solid"
+            android:orientation="vertical"
+            android:padding="10dp">
+
+            <TextView
+                android:id="@+id/tvPhoneIp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Phone IP: -"
+                android:textColor="@color/oracle_white"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvRedIp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="RED: -"
+                android:textColor="@color/oracle_white"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+    </FrameLayout>
+
+    <!-- Bottom sheet stays as a sibling so it can overlay the content -->
+    <include
+        android:id="@+id/bottom_sheet_layout"
+        layout="@layout/info_bottom_sheet" />
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

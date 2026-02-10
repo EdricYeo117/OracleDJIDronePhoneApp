@@ -4,7 +4,7 @@
             "outputFile": "com.google.mediapipe.examples.objectdetection.app-mergeDebugResources-2:/values-ldrtl-v17/values-ldrtl-v17.xml",
             "map": [
                 {
-                    "source": "C:\\Users\\Edric Yeo\\.gradle\\caches\\9.1.0\\transforms\\0b0d6c1fe31c4092c8dc960044865148\\workspace\\transformed\\material-1.12.0\\res\\values-ldrtl-v17\\values-ldrtl-v17.xml",
+                    "source": "C:\\Users\\spart\\.gradle\\caches\\9.1.0\\transforms\\0b0d6c1fe31c4092c8dc960044865148\\workspace\\transformed\\material-1.12.0\\res\\values-ldrtl-v17\\values-ldrtl-v17.xml",
                     "from": {
                         "startLines": "2,3",
                         "startColumns": "4,4",
