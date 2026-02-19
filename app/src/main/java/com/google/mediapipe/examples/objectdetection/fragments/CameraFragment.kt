@@ -93,7 +93,15 @@ class CameraFragment : Fragment(), ObjectDetectorHelper.DetectorListener {
     private val detectIntervalMotionMs = 0L       // full rate during motion/analyze window
     private val pingCooldownMs = 5_000L  // prevents spam
     private val TAG = "ObjectDetection"
-    private val motionGate = MotionGate()
+    //    private val motionGate = MotionGate()
+    private val motionGate = MotionGateV2(
+        downsampleStep = 6,
+        baseThreshold = 8f,
+        kSigma = 1.8f,
+        openIters = 1,
+        closeIters = 2,
+        minBlobArea = 15
+    )
     private var _fragmentCameraBinding: FragmentCameraBinding? = null
     private val fragmentCameraBinding
         get() = _fragmentCameraBinding!!
@@ -131,6 +139,11 @@ class CameraFragment : Fragment(), ObjectDetectorHelper.DetectorListener {
 
     @Volatile private var latestPoseBitmap: android.graphics.Bitmap? = null
     @Volatile private var latestPoseTimestampMs: Long = 0L
+    private lateinit var bgSubSwitch: com.google.android.material.switchmaterial.SwitchMaterial
+    @Volatile private var showBgSub: Boolean = false
+    private var showMotionMask = false
+    private lateinit var motionGateSwitch: com.google.android.material.switchmaterial.SwitchMaterial
+    @Volatile private var motionGateEnabled: Boolean = true
 
     private fun ensurePoseHelper() {
         if (poseHelper == null) {
@@ -252,6 +265,44 @@ class CameraFragment : Fragment(), ObjectDetectorHelper.DetectorListener {
             if (!isChecked) {
                 poseFilter.reset()
                 latestPoseBitmap = null
+            }
+        }
+        bgSubSwitch = view.findViewById(R.id.switch_bg_sub)
+        bgSubSwitch.isChecked = false
+        showBgSub = bgSubSwitch.isChecked
+
+        bgSubSwitch.setOnCheckedChangeListener { _, isChecked ->
+            showBgSub = isChecked
+            // You can also switch to full overlay by passing mode=1 if you want
+        }
+
+        val motionSwitch = view.findViewById<com.google.android.material.switchmaterial.SwitchMaterial>(R.id.switch_motion_gate)
+        motionGateEnabled = motionSwitch.isChecked
+
+        motionSwitch.setOnCheckedChangeListener { _, isChecked ->
+            motionGateEnabled = isChecked
+
+            // Optional UX: also disable the other toggles when master is off
+            bgSubSwitch.isEnabled = isChecked
+            increasedAccuracySwitch.isEnabled = isChecked
+
+            if (!isChecked) {
+                // Clear UI overlays so it looks "off"
+                activity?.runOnUiThread {
+                    if (_fragmentCameraBinding == null) return@runOnUiThread
+                    fragmentCameraBinding.overlay.setBackgroundSubtraction(null, false, mode = 1)
+                    fragmentCameraBinding.overlay.setMotionMask(null, false)
+                    fragmentCameraBinding.overlay.setPoseResults(null, 0, 0, 0)
+                    fragmentCameraBinding.overlay.clear()
+                    fragmentCameraBinding.tvStatus.text = getString(R.string.status_idle)
+                    fragmentCameraBinding.tvStatus.setBackgroundResource(R.drawable.bg_oracle_badge_outline)
+                }
+
+                // Reset state so it doesn't instantly trigger when re-enabled
+                personFilter.reset()
+                poseFilter.reset()
+                lastMotionActive = false
+                analyzeUntilMs = 0L
             }
         }
 
@@ -476,35 +527,57 @@ class CameraFragment : Fragment(), ObjectDetectorHelper.DetectorListener {
                 .build()
                 .also { analysis ->
                     analysis.setAnalyzer(backgroundExecutor) { imageProxy ->
+                        if (!motionGateEnabled) {
+                            // Master OFF: do nothing, release the frame immediately
+                            imageProxy.close()
+                            return@setAnalyzer
+                        }
                         val now = System.currentTimeMillis()
-                        val decision = motionGate.update(imageProxy, now)
+                        val rot = imageProxy.imageInfo.rotationDegrees
 
-                        // UI: show mask even if we don't analyze
-                        lastMotionActive = decision.motionFrame
-                        activity?.runOnUiThread {
-                            if (_fragmentCameraBinding == null) return@runOnUiThread
-                            fragmentCameraBinding.overlay.setMotionMask(decision.maskBitmap, decision.motionFrame)
+                        var decisionMotionFrame = false
+                        var maskA8Rot: Bitmap? = null
+                        var insetBmp: Bitmap? = null
+
+                        if (motionGateEnabled) {
+                            // 1) Motion gate reads imageProxy
+                            val decision = motionGate.update(imageProxy, now)
+                            decisionMotionFrame = decision.motionFrame
+                            lastMotionActive = decisionMotionFrame
+
+                            // 2) Build UI bitmaps NOW (before imageProxy can be closed)
+                            maskA8Rot = decision.maskBitmap?.let { rotateBitmap(it, rot) }
+                            val previewRot: Bitmap? = decision.previewBitmap?.let { rotateBitmap(it, rot) }
+                            insetBmp = previewRot?.let { Bitmap.createScaledBitmap(it, 320, 240, false) }
+
+                            // 3) UI update using ONLY bitmaps
+                            activity?.runOnUiThread {
+                                if (_fragmentCameraBinding == null) return@runOnUiThread
+                                fragmentCameraBinding.overlay.setBackgroundSubtraction(insetBmp, showBgSub, mode = 1)
+                                fragmentCameraBinding.overlay.setMotionMask(
+                                    if (showMotionMask) maskA8Rot else null,
+                                    decisionMotionFrame
+                                )
+                            }
+                        } else {
+                            // Motion gate OFF: do not affect UI / state
+                            lastMotionActive = false
                         }
 
-                        // Latch window on trigger (boost mode)
-                        if (decision.triggered) {
-                            analyzeUntilMs = now + analyzeHoldMs
-                        }
-
-                        // Decide whether we’re in boosted mode
+                        // 4) Throttling (OPTION A: keep your existing behavior)
                         val inBoost = now < analyzeUntilMs
                         val interval = if (inBoost) detectIntervalMotionMs else detectIntervalNoMotionMs
 
-                        // Throttle detection when no motion
+                        // 4b) Throttling (OPTION B: when motion gate is OFF, run full rate)
+                        // val interval = if (!motionGateEnabled) 0L else if (inBoost) detectIntervalMotionMs else detectIntervalNoMotionMs
+
                         if (interval > 0 && (now - lastDetectMs) < interval) {
                             imageProxy.close()
                             return@setAnalyzer
                         }
                         lastDetectMs = now
 
-                        // Capture pose bitmap for later pose inference (keep this)
-                        val rot = imageProxy.imageInfo.rotationDegrees
-                        latestPoseRotationDegrees = rot
+                        // 5) Capture pose bitmap (must happen before detector closes imageProxy)
                         try {
                             val bmpRaw = rgba8888ImageProxyToBitmap(imageProxy)
                             val bmpUpright = rotateBitmap(bmpRaw, rot)
@@ -514,9 +587,10 @@ class CameraFragment : Fragment(), ObjectDetectorHelper.DetectorListener {
                             Log.w(TAG, "Failed to capture pose bitmap: ${e.message}")
                         }
 
-                        // Run object detection ALWAYS (throttled if no motion)
-                        objectDetectorHelper.detectLivestreamFrame(imageProxy) // helper closes imageProxy
+                        // 6) Object detector will close imageProxy
+                        objectDetectorHelper.detectLivestreamFrame(imageProxy)
                     }
+
                 }
 
         cameraProvider.unbindAll()
@@ -553,7 +627,7 @@ class CameraFragment : Fragment(), ObjectDetectorHelper.DetectorListener {
      *
      * @param resultBundle The detection results including inference time and image dimensions.
      */
-   override fun onResults(resultBundle: ObjectDetectorHelper.ResultBundle) {
+    override fun onResults(resultBundle: ObjectDetectorHelper.ResultBundle) {
         if (_fragmentCameraBinding == null) return
 
         val detectionResult = resultBundle.results[0]

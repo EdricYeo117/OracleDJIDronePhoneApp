@@ -75,7 +75,10 @@ class OverlayView(context: Context?, attrs: AttributeSet?) : View(context, attrs
     private var poseOutputRotate = 0
     private val poseTransformMatrix = Matrix()
     private val poseTmpPts = FloatArray(2)
-
+    private var bgSubBitmap: Bitmap? = null
+    private var bgSubEnabled: Boolean = false
+    private var bgSubMode: Int = 0
+    private val bgPaint = Paint().apply { alpha = 200 } // stronger than maskPaint
 
     init {
         initPaints()
@@ -104,7 +107,19 @@ class OverlayView(context: Context?, attrs: AttributeSet?) : View(context, attrs
     fun setRunningMode(runningMode: RunningMode) {
         this.runningMode = runningMode
     }
+    private val pipBorderPaint = Paint().apply {
+        style = Paint.Style.STROKE
+        strokeWidth = 3f
+        color = Color.WHITE
+        isAntiAlias = true
+    }
 
+    fun setBackgroundSubtraction(bitmap: Bitmap?, enabled: Boolean, mode: Int = 0) {
+        bgSubBitmap = bitmap
+        bgSubEnabled = enabled
+        bgSubMode = mode
+        invalidate()
+    }
     /**
      * Updates the object detection results to be drawn.
      * Triggers an invalidate() to redraw the view.
@@ -195,12 +210,32 @@ class OverlayView(context: Context?, attrs: AttributeSet?) : View(context, attrs
     // -----------------------------
     override fun draw(canvas: Canvas) {
         super.draw(canvas)
+        // 0) Draw background subtraction diff (debug)
+        if (bgSubEnabled) {
+            val bmp = bgSubBitmap
+            if (bmp != null) {
+                if (bgSubMode == 1) {
+                    // DRAW AS PREVIEW (opaque) — no alpha manipulation
+                    val insetW = (width * 0.35f).toInt()
+                    val insetH = (height * 0.25f).toInt()
+                    val left = width - insetW - 24
+                    val top = height - insetH - 24
+                    val dst = android.graphics.Rect(left, top, left + insetW, top + insetH)
 
-        // 1) Draw motion mask (stretched to overlay size)
-        motionMask?.let { mask ->
-            val dst = Rect(0, 0, width, height)
-            canvas.drawBitmap(mask, null, dst, maskPaint)
+                    // optional: black border background behind it
+                    val borderPaint = android.graphics.Paint().apply { color = 0xFF000000.toInt() }
+                    canvas.drawRect(dst, borderPaint)
+
+                    canvas.drawBitmap(bmp, null, dst, null)
+                }
+            }
         }
+
+//        // 1) Draw motion mask (stretched to overlay size)
+//        motionMask?.let { mask ->
+//            val dst = Rect(0, 0, width, height)
+//            canvas.drawBitmap(mask, null, dst, maskPaint)
+//        }
 
         // 2) Draw activation text (top-left)
 //        val status = when {
@@ -224,6 +259,33 @@ class OverlayView(context: Context?, attrs: AttributeSet?) : View(context, attrs
         recalcScaleFactor()
         updateTransformMatrix()
         updatePoseTransformMatrix()
+    }
+
+    private fun drawBitmapRotatedIntoRect(
+        canvas: Canvas,
+        bitmap: Bitmap,
+        dst: Rect,
+        rotationDegrees: Int,
+        paint: Paint
+    ) {
+        canvas.save()
+
+        // Move origin to dst center
+        val cx = dst.exactCenterX()
+        val cy = dst.exactCenterY()
+        canvas.translate(cx, cy)
+
+        // Rotate around center
+        canvas.rotate(rotationDegrees.toFloat())
+
+        // After rotation, draw the bitmap centered with dst size
+        val w = dst.width().toFloat()
+        val h = dst.height().toFloat()
+        val src = Rect(0, 0, bitmap.width, bitmap.height)
+        val rotatedDst = RectF(-w / 2f, -h / 2f, w / 2f, h / 2f)
+
+        canvas.drawBitmap(bitmap, src, rotatedDst, paint)
+        canvas.restore()
     }
 
     private fun drawObjectDetections(canvas: Canvas) {

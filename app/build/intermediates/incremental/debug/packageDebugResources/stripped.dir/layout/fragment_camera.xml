@@ -42,15 +42,39 @@
             android:textColor="@color/oracle_white"
             android:background="@drawable/bg_oracle_badge_outline" />
 
-        <com.google.android.material.switchmaterial.SwitchMaterial
-            android:id="@+id/switch_increased_accuracy"
+        <!-- TOP controls (aligned as a group) -->
+        <LinearLayout
+            android:id="@+id/toggle_container"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="top|end"
             android:layout_marginTop="12dp"
             android:layout_marginEnd="12dp"
-            android:text="Increased accuracy (pose)"
-            android:textColor="@color/oracle_white"/>
+            android:orientation="vertical"
+            android:gravity="end">
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/switch_increased_accuracy"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Increased accuracy (pose)"
+                android:textColor="@color/oracle_white" />
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/switch_bg_sub"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Show BS (preview)"
+                android:textColor="@color/oracle_white" />
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/switch_motion_gate"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Motion gate"
+                android:textColor="@color/oracle_white"
+                android:checked="true" />
+        </LinearLayout>
 
         <!-- DEBUG NETWORK LABELS (TOP-LEFT, stacked under status) -->
         <LinearLayout

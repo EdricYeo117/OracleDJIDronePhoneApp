@@ -69,10 +69,13 @@ id permissions_fragment
 id progress
 id spinner_delegate
 id spinner_model
+id switch_bg_sub
 id switch_increased_accuracy
+id switch_motion_gate
 id threshold_minus
 id threshold_plus
 id threshold_value
+id toggle_container
 id toolbar
 id tvPhoneIp
 id tvPlaceholder

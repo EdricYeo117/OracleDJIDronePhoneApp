@@ -40,7 +40,16 @@ public final class FragmentCameraBinding implements ViewBinding {
   public final OverlayView overlay;
 
   @NonNull
+  public final SwitchMaterial switchBgSub;
+
+  @NonNull
   public final SwitchMaterial switchIncreasedAccuracy;
+
+  @NonNull
+  public final SwitchMaterial switchMotionGate;
+
+  @NonNull
+  public final LinearLayout toggleContainer;
 
   @NonNull
   public final TextView tvPhoneIp;
@@ -57,16 +66,20 @@ public final class FragmentCameraBinding implements ViewBinding {
   private FragmentCameraBinding(@NonNull CoordinatorLayout rootView,
       @NonNull InfoBottomSheetBinding bottomSheetLayout, @NonNull CoordinatorLayout cameraContainer,
       @NonNull FrameLayout contentContainer, @NonNull LinearLayout networkInfoContainer,
-      @NonNull OverlayView overlay, @NonNull SwitchMaterial switchIncreasedAccuracy,
-      @NonNull TextView tvPhoneIp, @NonNull TextView tvRedIp, @NonNull TextView tvStatus,
-      @NonNull PreviewView viewFinder) {
+      @NonNull OverlayView overlay, @NonNull SwitchMaterial switchBgSub,
+      @NonNull SwitchMaterial switchIncreasedAccuracy, @NonNull SwitchMaterial switchMotionGate,
+      @NonNull LinearLayout toggleContainer, @NonNull TextView tvPhoneIp, @NonNull TextView tvRedIp,
+      @NonNull TextView tvStatus, @NonNull PreviewView viewFinder) {
     this.rootView = rootView;
     this.bottomSheetLayout = bottomSheetLayout;
     this.cameraContainer = cameraContainer;
     this.contentContainer = contentContainer;
     this.networkInfoContainer = networkInfoContainer;
     this.overlay = overlay;
+    this.switchBgSub = switchBgSub;
     this.switchIncreasedAccuracy = switchIncreasedAccuracy;
+    this.switchMotionGate = switchMotionGate;
+    this.toggleContainer = toggleContainer;
     this.tvPhoneIp = tvPhoneIp;
     this.tvRedIp = tvRedIp;
     this.tvStatus = tvStatus;
@@ -127,9 +140,27 @@ public final class FragmentCameraBinding implements ViewBinding {
         break missingId;
       }
 
+      id = R.id.switch_bg_sub;
+      SwitchMaterial switchBgSub = ViewBindings.findChildViewById(rootView, id);
+      if (switchBgSub == null) {
+        break missingId;
+      }
+
       id = R.id.switch_increased_accuracy;
       SwitchMaterial switchIncreasedAccuracy = ViewBindings.findChildViewById(rootView, id);
       if (switchIncreasedAccuracy == null) {
+        break missingId;
+      }
+
+      id = R.id.switch_motion_gate;
+      SwitchMaterial switchMotionGate = ViewBindings.findChildViewById(rootView, id);
+      if (switchMotionGate == null) {
+        break missingId;
+      }
+
+      id = R.id.toggle_container;
+      LinearLayout toggleContainer = ViewBindings.findChildViewById(rootView, id);
+      if (toggleContainer == null) {
         break missingId;
       }
 
@@ -158,8 +189,9 @@ public final class FragmentCameraBinding implements ViewBinding {
       }
 
       return new FragmentCameraBinding((CoordinatorLayout) rootView, binding_bottomSheetLayout,
-          cameraContainer, contentContainer, networkInfoContainer, overlay, switchIncreasedAccuracy,
-          tvPhoneIp, tvRedIp, tvStatus, viewFinder);
+          cameraContainer, contentContainer, networkInfoContainer, overlay, switchBgSub,
+          switchIncreasedAccuracy, switchMotionGate, toggleContainer, tvPhoneIp, tvRedIp, tvStatus,
+          viewFinder);
     }
     String missingId = rootView.getResources().getResourceName(id);
     throw new NullPointerException("Missing required view with ID: ".concat(missingId));
